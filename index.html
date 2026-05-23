@@ -14,6 +14,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <style>
+    /* Compact Mode: Menurunkan root font-size agar elemen proporsional dan muat lebih banyak data */
+    html { font-size: 13.5px; }
     body { font-family: 'Inter', sans-serif; }
     /* Kustomisasi scrollbar agar rapi */
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -31,20 +33,24 @@
   <div id="root"></div>
 
   <script type="text/babel" data-type="module">
-    // Mengimpor library langsung menggunakan ESM.sh (standar module browser modern)
+    // Mengimpor library dengan versi spesifik
     import React, { useState, useEffect, useMemo } from 'https://esm.sh/react@18.3.1';
     import { createRoot } from 'https://esm.sh/react-dom@18.3.1/client';
     
     import { 
       LayoutDashboard, Share2, Globe, Newspaper, BrainCircuit, 
       Menu, X, Search, Plus, Activity, LogOut, Upload, CheckCircle2,
-      Building, Image as ImageIcon, Loader2, Save, Trash2, Edit2, Eye, BarChart2
+      Building, Image as ImageIcon, Loader2, Save, Trash2, Edit2, Eye, BarChart2, Calendar,
+      Filter, Send, Lock
     } from 'https://esm.sh/lucide-react@0.378.0?deps=react@18.3.1';
 
     import { 
-      ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell 
+      ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell,
+      BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
+      AreaChart, Area, CartesianGrid
     } from 'https://esm.sh/recharts@2.12.7?deps=react@18.3.1,react-dom@18.3.1';
 
+    // CDN Firebase Resmi
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js';
     import { 
       getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
@@ -75,14 +81,26 @@
     const appId = 'media-analytics-bdg';
 
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzaia1vrwDGIIarTC1u0YXaHWA_-1Lz-LgH0SsR0H-o65o7T9OdYfJcNqjBte3NJQmDCA/exec';
-    const GNEWS_API_KEY = '094e65d34c1a45eaf46aba2a2bde6269';
 
     const LEADING_SECTORS = [
-      "Dinas Pendidikan", "Dinas Pekerjaan Umum", "Dinas Kesehatan", "Dinas Sosial",
-      "Dinas Perhubungan", "Dinas Lingkungan Hidup", "Dinas Pariwisata dan Kebudayaan",
-      "Dinas Komunikasi dan Informatika", "Dinas Kependudukan dan Pencatatan Sipil",
-      "Dinas Kebakaran dan Penanggulangan Bencana", "Satpol PP", "Bappelitbang", 
-      "Bapenda", "Kecamatan", "Kelurahan", "Lainnya"
+      "Inspektorat", "Badan Perencanaan Pembangunan Riset dan Inovasi Daerah", "Badan Kepegawaian dan Pengembangan Sumber Daya Manusia", 
+      "Badan Keuangan dan Aset Daerah", "Badan Pendapatan Daerah", "Badan Kesatuan Bangsa dan Politik", "Badan Penanggulangan Bencana Daerah", 
+      "Satuan Polisi Pamong Praja", "Dinas Cipta Karya, Bina Konstruksi dan Tata Ruang", "Dinas Pemadam Kebakaran Dan Penyelamatan", 
+      "Dinas Kebudayaan dan Pariwisata", "Dinas Kependudukan dan Pencatatan Sipil", "Dinas Kesehatan", "Dinas Ketahanan Pangan dan Pertanian", 
+      "Dinas Ketenagakerjaan", "Dinas Komunikasi dan Informatika", "Dinas Koperasi dan Usaha Kecil Dan Menengah", "Dinas Lingkungan Hidup", 
+      "Dinas Sumber Daya Air dan Bina Marga", "Dinas Pemberdayaan Perempuan dan Perlindungan Anak", "Dinas Pemuda dan Olah Raga", 
+      "Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu", "Dinas Pendidikan", "Dinas Pengendalian Penduduk dan Keluarga Berencana", 
+      "Dinas Perdagangan dan Perindustrian", "Dinas Perhubungan", "Dinas Perumahan dan Kawasan Permukiman", "Dinas Sosial", 
+      "Dinas Arsip dan Perpustakaan", "Bagian Tata Pemerintahan", "Bagian Kesejahteraan Rakyat", "Bagian Kerja Sama", 
+      "Bagian Perekonomian", "Bagian Hukum", "Bagian Umum", "Bagian Administrasi Pembangunan", "Bagian Pengadaan Barang/Jasa", 
+      "Bagian Organisasi", "Bagian Perencanaan, Keuangan dan Kepegawaian", "Bagian Protokol dan Komunikasi Pimpinan", 
+      "Rumah Sakit Umum Daerah", "RSUD Bandung Kiwari", "Rumah Sakit Khusus Gigi dan Mulut", "Kecamatan Cibeunying Kaler", 
+      "Kecamatan Cidadap", "Kecamatan Sukajadi", "Kecamatan Cicendo", "Kecamatan Andir", "Kecamatan Coblong", "Kecamatan Bandung Wetan", 
+      "Kecamatan Sumur Bandung", "Kecamatan Cibeunying Kidul", "Kecamatan Sukasari", "Kecamatan Astana anyar", "Kecamatan Bojongloa Kaler", 
+      "Kecamatan Bojongloa Kidul", "Kecamatan Babakan Ciparay", "Kecamatan Bandung Kulon", "Kecamatan Regol", "Kecamatan Lengkong", 
+      "Kecamatan Batununggal", "Kecamatan Kiaracondong", "Kecamatan Arcamanik", "Kecamatan Cibiru", "Kecamatan Rancasari", 
+      "Kecamatan Antapani", "Kecamatan Bandung Kidul", "Kecamatan Gedebage", "Kecamatan Panyileukan", "Kecamatan Cinambo", 
+      "Kecamatan Mandalajati", "Kecamatan Ujungberung", "Kecamatan Buahbatu", "Lainnya"
     ];
 
     const COLORS = { Positif: '#10b981', Negatif: '#ef4444', Netral: '#f59e0b' };
@@ -90,7 +108,7 @@
     function AuthScreen({ onLogin, setGlobalRole, setGlobalProfile, showToast }) {
       const [isLogin, setIsLogin] = useState(true);
       const [isForgotPassword, setIsForgotPassword] = useState(false);
-      const [regRole, setRegRole] = useState('visitor'); 
+      const [regRole, setRegRole] = useState('pd'); // 'pd', 'pimpinan', 'admin'
       const [name, setName] = useState('');
       const [agency, setAgency] = useState(LEADING_SECTORS[0]);
       const [email, setEmail] = useState('');
@@ -99,13 +117,13 @@
       const [loading, setLoading] = useState(false);
 
       const recordToGoogleSheet = async (userEmail, userRole, userName = '', userAgency = '') => {
-        if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("MASUKKAN_URL")) return;
+        if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("MASUKKAN")) return;
         try {
           await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'recordUser', email: userEmail, role: userRole, name: userName, agency: userAgency })
           });
-        } catch (err) { console.error("Gagal mencatat ke Sheet"); }
+        } catch (err) { console.error(err); }
       };
 
       const handleResetPassword = async (e) => {
@@ -126,45 +144,44 @@
           if (isLogin) {
             await signInWithEmailAndPassword(auth, email, password);
           } else {
-            let assignedRole = regRole;
-            if (assignedRole === 'admin' && adminCode !== 'PROKOPIM2026') {
+            if (regRole === 'admin' && adminCode !== 'PROKOPIM2026') {
               showToast("Kode admin salah!", "error"); setLoading(false); return;
             }
-            if (assignedRole === 'visitor' && !name) {
+            if ((regRole === 'pd' || regRole === 'pimpinan') && !name) {
               showToast("Nama lengkap harus diisi!", "error"); setLoading(false); return;
             }
 
             const userCred = await createUserWithEmailAndPassword(auth, email, password);
-            const userDocRef = doc(db, 'artifacts', appId, 'users', userCred.user.uid, 'profile', 'info');
             const profileData = {
-              email: userCred.user.email, role: assignedRole,
-              name: assignedRole === 'visitor' ? name : 'Admin Prokopim',
-              agency: assignedRole === 'visitor' ? agency : 'Sekretariat Daerah',
+              email: userCred.user.email, role: regRole,
+              name: regRole === 'admin' ? 'Admin Prokopim' : name,
+              agency: regRole === 'pd' ? agency : (regRole === 'pimpinan' ? 'Pimpinan Daerah' : 'Sekretariat Daerah'),
               createdAt: new Date().toISOString()
             };
-
-            await setDoc(userDocRef, profileData);
-            await recordToGoogleSheet(email, assignedRole, profileData.name, profileData.agency);
             
-            setGlobalRole(assignedRole); setGlobalProfile(profileData);
+            await setDoc(doc(db, 'artifacts', appId, 'users', userCred.user.uid, 'profile', 'info'), profileData);
+            await recordToGoogleSheet(email, regRole, profileData.name, profileData.agency);
+            
+            setGlobalRole(regRole);
+            setGlobalProfile(profileData);
             showToast("Registrasi berhasil", "success");
           }
         } catch (error) {
           let msg = error.message;
-          if (error.code === 'auth/email-already-in-use') { msg = 'Email sudah terdaftar. Mengalihkan ke Login...'; setIsLogin(true); } 
-          else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') { msg = 'Email atau password salah, atau akun belum terdaftar.'; }
+          if (error.code === 'auth/email-already-in-use') { msg = 'Email sudah terdaftar. Silakan pindah ke menu Login.'; setIsLogin(true); }
+          else if (error.code === 'auth/invalid-credential') msg = 'Email atau password salah.';
           showToast(msg, "error");
         } finally { setLoading(false); }
       };
 
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
-          <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
           <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md relative z-10 border border-slate-100">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-emerald-400 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg transform rotate-3">
+              <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-emerald-400 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-blue-500/30 transform rotate-3">
                 <LayoutDashboard className="text-white w-8 h-8 -rotate-3" />
               </div>
               <h2 className="text-2xl font-bold text-slate-800">Media Analytics</h2>
@@ -172,50 +189,49 @@
             </div>
 
             {isForgotPassword ? (
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                <h3 className="text-lg font-bold text-center text-slate-800 mb-2">Reset Password</h3>
-                <p className="text-sm text-center text-slate-500 mb-4">Masukkan email Anda untuk mereset password.</p>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                  <input type="email" required className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none" value={email} onChange={e => setEmail(e.target.value)} />
-                </div>
-                <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg transition-all flex justify-center items-center">
-                  {loading ? <Loader2 className="animate-spin" /> : 'Kirim Link Reset'}
-                </button>
-                <div className="mt-4 text-center text-sm">
-                  <button type="button" onClick={() => setIsForgotPassword(false)} className="font-bold text-slate-600 hover:text-slate-800">Kembali ke Login</button>
-                </div>
-              </form>
+               <form onSubmit={handleResetPassword} className="space-y-4">
+                  <h3 className="text-lg font-bold text-center text-slate-800 mb-2">Reset Password</h3>
+                  <p className="text-sm text-center text-slate-500 mb-4">Masukkan email Anda untuk menerima tautan reset password.</p>
+                  <input type="email" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Anda" />
+                  <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex justify-center">{loading ? <Loader2 className="animate-spin" /> : 'Kirim Link Reset'}</button>
+                  <button type="button" onClick={() => setIsForgotPassword(false)} className="w-full text-sm font-bold text-slate-600 mt-2">Kembali ke Login</button>
+               </form>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {!isLogin && (
-                  <div className="flex bg-slate-100 p-1 rounded-xl mb-6">
-                    <button type="button" onClick={() => setRegRole('visitor')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${regRole === 'visitor' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}>Pengunjung</button>
-                    <button type="button" onClick={() => setRegRole('admin')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${regRole === 'admin' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}>Admin</button>
-                  </div>
-                )}
-                {!isLogin && regRole === 'visitor' && (
-                  <>
-                    <div><label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap</label><input type="text" required className="w-full px-4 py-3 rounded-xl border outline-none" value={name} onChange={e => setName(e.target.value)} placeholder="Nama Anda" /></div>
+               <form onSubmit={handleSubmit} className="space-y-4">
+                 {!isLogin && (
+                    <div className="flex bg-slate-100 p-1 rounded-xl mb-4 gap-1">
+                      <button type="button" onClick={() => setRegRole('pd')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'pd' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Perangkat Daerah</button>
+                      <button type="button" onClick={() => setRegRole('pimpinan')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'pimpinan' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Pimpinan</button>
+                      <button type="button" onClick={() => setRegRole('admin')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'admin' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Admin</button>
+                    </div>
+                 )}
+
+                 {!isLogin && (regRole === 'pd' || regRole === 'pimpinan') && (
+                    <div><input type="text" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={name} onChange={e => setName(e.target.value)} placeholder="Nama Lengkap" /></div>
+                 )}
+                 {!isLogin && regRole === 'pd' && (
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Perangkat Daerah</label>
-                      <select required className="w-full px-4 py-3 rounded-xl border outline-none bg-white" value={agency} onChange={e => setAgency(e.target.value)}>
+                      <select required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500 bg-white" value={agency} onChange={e => setAgency(e.target.value)}>
                         {LEADING_SECTORS.map(sec => <option key={sec} value={sec}>{sec}</option>)}
                       </select>
                     </div>
-                  </>
-                )}
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Email</label><input type="email" required className="w-full px-4 py-3 rounded-xl border outline-none" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@bandung.go.id" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Password</label><input type="password" required className="w-full px-4 py-3 rounded-xl border outline-none" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" /></div>
-                {!isLogin && regRole === 'admin' && (
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-2"><label className="block text-sm font-medium text-slate-700 mb-1">Kode Admin</label><input type="password" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-emerald-500" value={adminCode} onChange={e => setAdminCode(e.target.value)} placeholder="Masukkan PROKOPIM2026" /></div>
-                )}
-                {isLogin && (<div className="flex justify-end"><button type="button" onClick={() => setIsForgotPassword(true)} className="text-sm font-medium text-blue-600 hover:underline">Lupa Password?</button></div>)}
-                <button type="submit" disabled={loading} className="w-full py-3.5 mt-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg flex justify-center items-center">
-                  {loading ? <Loader2 className="animate-spin" /> : (isLogin ? 'Login' : 'Registrasi')}
-                </button>
-              </form>
+                 )}
+
+                 <div><input type="email" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@bandung.go.id" /></div>
+                 <div><input type="password" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" /></div>
+                 
+                 {!isLogin && regRole === 'admin' && (
+                    <div className="bg-slate-50 p-4 rounded-xl border">
+                       <label className="block text-xs font-bold text-slate-700 mb-1">Kode Admin</label>
+                       <input type="password" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-emerald-500" value={adminCode} onChange={e => setAdminCode(e.target.value)} placeholder="PROKOPIM2026" />
+                    </div>
+                 )}
+
+                 {isLogin && (<div className="text-right"><button type="button" onClick={() => setIsForgotPassword(true)} className="text-xs text-blue-600 font-bold hover:underline">Lupa Password?</button></div>)}
+                 <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex justify-center shadow-lg">{loading ? <Loader2 className="animate-spin" /> : (isLogin ? 'Login' : 'Registrasi')}</button>
+               </form>
             )}
+
             {!isForgotPassword && (
               <div className="mt-6 text-center text-sm text-slate-600">
                 {isLogin ? "Belum punya akun? " : "Sudah punya akun? "}
@@ -239,57 +255,167 @@
           { name: 'Negatif', value: issues.filter(i => i.sentiment === 'Negatif').length, color: COLORS.Negatif },
           { name: 'Netral', value: issues.filter(i => i.sentiment === 'Netral').length, color: COLORS.Netral },
         ];
-        return { total, social, online, print, sentimentData };
+
+        const statusCount = { 'Belum Ditangani': 0, 'Dalam Proses': 0, 'Selesai': 0 };
+        const sectorCount = {};
+        
+        issues.forEach(i => {
+          const status = i.status || 'Belum Ditangani';
+          if (statusCount[status] !== undefined) statusCount[status]++;
+          else statusCount['Belum Ditangani']++;
+          const sector = i.leadingSector || 'Lainnya';
+          sectorCount[sector] = (sectorCount[sector] || 0) + 1;
+        });
+
+        const statusData = [
+          { name: 'Belum', value: statusCount['Belum Ditangani'], color: '#94a3b8' },
+          { name: 'Proses', value: statusCount['Dalam Proses'], color: '#3b82f6' },
+          { name: 'Selesai', value: statusCount['Selesai'], color: '#10b981' }
+        ];
+
+        const categoryData = [
+          { name: 'Sosial', value: social, color: '#3b82f6' },
+          { name: 'Online', value: online, color: '#a855f7' },
+          { name: 'Cetak', value: print, color: '#ec4899' }
+        ];
+
+        const sectorData = Object.keys(sectorCount).map(k => ({ name: k, total: sectorCount[k] })).sort((a, b) => b.total - a.total).slice(0, 5);
+
+        const timelineMap = {};
+        issues.forEach(i => { if(i.date) timelineMap[i.date] = (timelineMap[i.date] || 0) + 1; });
+        const timelineData = Object.keys(timelineMap).sort((a, b) => new Date(a) - new Date(b)).map(date => {
+            const d = new Date(date);
+            return { rawDate: date, date: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }), total: timelineMap[date] };
+        }).slice(-14);
+
+        return { total, social, online, print, sentimentData, statusData, categoryData, sectorData, timelineData };
       }, [issues]);
 
       return (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div onClick={() => setActiveTab('social')} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md transition-all group">
-              <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110"><Share2 size={24} /></div>
-              <div><p className="text-slate-500 text-sm font-medium">Media Sosial</p><p className="text-2xl font-bold text-slate-800">{stats.social}</p></div>
+            <div onClick={() => setActiveTab('social')} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md hover:border-blue-200 transition-all group">
+              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform"><Share2 size={20} /></div>
+              <div><p className="text-slate-500 text-[11px] font-bold">Media Sosial</p><p className="text-xl font-bold text-slate-800">{stats.social}</p></div>
             </div>
-            <div onClick={() => setActiveTab('online')} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md transition-all group">
-              <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110"><Globe size={24} /></div>
-              <div><p className="text-slate-500 text-sm font-medium">Media Online</p><p className="text-2xl font-bold text-slate-800">{stats.online}</p></div>
+            <div onClick={() => setActiveTab('online')} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md hover:border-purple-200 transition-all group">
+              <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform"><Globe size={20} /></div>
+              <div><p className="text-slate-500 text-[11px] font-bold">Media Online</p><p className="text-xl font-bold text-slate-800">{stats.online}</p></div>
             </div>
-            <div onClick={() => setActiveTab('print')} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md transition-all group">
-              <div className="w-14 h-14 bg-pink-50 text-pink-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110"><Newspaper size={24} /></div>
-              <div><p className="text-slate-500 text-sm font-medium">Media Cetak</p><p className="text-2xl font-bold text-slate-800">{stats.print}</p></div>
+            <div onClick={() => setActiveTab('print')} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md hover:border-pink-200 transition-all group">
+              <div className="w-12 h-12 bg-pink-50 text-pink-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform"><Newspaper size={20} /></div>
+              <div><p className="text-slate-500 text-[11px] font-bold">Media Cetak</p><p className="text-xl font-bold text-slate-800">{stats.print}</p></div>
             </div>
-            <div onClick={() => setActiveTab('dashboard')} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md transition-all group">
-              <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110"><Activity size={24} /></div>
-              <div><p className="text-slate-500 text-sm font-medium">Total Isu</p><p className="text-2xl font-bold text-slate-800">{stats.total}</p></div>
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center group">
+              <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mr-4"><Activity size={20} /></div>
+              <div><p className="text-slate-500 text-[11px] font-bold">Total Isu</p><p className="text-xl font-bold text-slate-800">{stats.total}</p></div>
             </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-              <h3 className="font-bold text-slate-800 mb-6 flex items-center"><BarChart2 className="mr-2 text-slate-400" /> Komposisi Sentimen</h3>
-              <div className="h-64">
+
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <h3 className="font-bold text-slate-800 mb-4 flex items-center"><Calendar className="mr-2 text-slate-400" size={18}/> Tren Volume Isu (14 Hari Terakhir)</h3>
+            <div className="h-64 w-full">
+              {stats.timelineData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stats.timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
+                    <RechartsTooltip cursor={{stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3'}} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }} />
+                    <Area type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (<div className="h-full flex items-center justify-center text-slate-400 text-sm">Belum ada data tren harian.</div>)}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+              <h3 className="font-bold text-slate-800 mb-4 flex items-center text-sm"><BarChart2 className="mr-2 text-slate-400" size={16}/> Sentimen Isu</h3>
+              <div className="h-40 flex-1">
                 <ResponsiveContainer width="100%" height="100%">
                   <RechartsPieChart>
-                    <Pie data={stats.sentimentData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                    <Pie data={stats.sentimentData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value">
                       {stats.sentimentData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                     </Pie>
+                    <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                   </RechartsPieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex justify-center gap-4 mt-4">
-                {stats.sentimentData.map(item => (
-                  <div key={item.name} className="flex items-center text-sm"><span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></span>{item.name} ({item.value})</div>
-                ))}
+              <div className="flex justify-center gap-3 mt-2 flex-wrap">
+                {stats.sentimentData.map(item => (<div key={item.name} className="flex items-center text-[11px]"><span className="w-2.5 h-2.5 rounded-full mr-1.5" style={{ backgroundColor: item.color }}></span>{item.name} ({item.value})</div>))}
               </div>
             </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+              <h3 className="font-bold text-slate-800 mb-4 flex items-center text-sm"><Activity className="mr-2 text-slate-400" size={16}/> Status Penanganan</h3>
+              <div className="h-40 flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie data={stats.statusData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value">
+                      {stats.statusData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                    </Pie>
+                    <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-3 mt-2 flex-wrap">
+                {stats.statusData.map(item => (<div key={item.name} className="flex items-center text-[11px]"><span className="w-2.5 h-2.5 rounded-full mr-1.5" style={{ backgroundColor: item.color }}></span>{item.name} ({item.value})</div>))}
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+              <h3 className="font-bold text-slate-800 mb-4 flex items-center text-sm"><Share2 className="mr-2 text-slate-400" size={16}/> Kategori Media</h3>
+              <div className="h-40 flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie data={stats.categoryData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5} dataKey="value">
+                      {stats.categoryData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                    </Pie>
+                    <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-3 mt-2 flex-wrap">
+                {stats.categoryData.map(item => (<div key={item.name} className="flex items-center text-[11px]"><span className="w-2.5 h-2.5 rounded-full mr-1.5" style={{ backgroundColor: item.color }}></span>{item.name} ({item.value})</div>))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-              <h3 className="font-bold text-slate-800 mb-6 flex items-center"><Building className="mr-2 text-slate-400" /> Isu Terbaru</h3>
-              <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+              <h3 className="font-bold text-slate-800 mb-6 flex items-center"><Building className="mr-2 text-slate-400" size={18}/> Top 5 Perangkat Daerah</h3>
+              <div className="h-64">
+                {stats.sectorData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.sectorData} layout="vertical" margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} width={120} />
+                      <RechartsTooltip cursor={{fill: '#f1f5f9'}} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
+                      <Bar dataKey="total" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (<div className="h-full flex items-center justify-center text-slate-400 text-sm">Belum ada data sektor.</div>)}
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+              <h3 className="font-bold text-slate-800 mb-6 flex items-center"><Activity className="mr-2 text-slate-400" size={18}/> Isu Terbaru</h3>
+              <div className="space-y-4 max-h-[256px] overflow-y-auto custom-scrollbar pr-2">
                 {issues.slice(0, 5).map(issue => (
                   <div key={issue.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="flex justify-between items-start mb-2"><span className="text-xs font-bold text-slate-500 bg-white px-2 py-1 rounded border">{issue.sourceType}</span><span className="text-xs text-slate-400">{issue.date}</span></div>
+                    <div className="flex justify-between items-start mb-2"><span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded border">{issue.sourceType}</span><span className="text-[10px] text-slate-400">{issue.date}</span></div>
                     <h4 className="font-bold text-slate-800 text-sm line-clamp-2">{issue.title}</h4>
-                    <div className="mt-2 flex gap-2">
-                       <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md font-medium">{issue.leadingSector}</span>
-                       <span className={`text-xs px-2 py-1 rounded-md font-medium ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
+                    <div className="mt-2 flex gap-2 flex-wrap">
+                       <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded-md font-bold">{issue.leadingSector}</span>
+                       <span className={`text-[10px] px-2 py-1 rounded-md font-bold ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
+                       <span className={`text-[10px] px-2 py-1 rounded-md font-bold ${issue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : issue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{issue.status || 'Belum Ditangani'}</span>
                     </div>
                   </div>
                 ))}
@@ -301,30 +427,53 @@
       );
     }
 
-    function DataTableView({ title, type, issues, onAdd, onEdit, onDelete, role, onView, onFetchNews, isFetchingNews }) {
+    function DataTableView({ title, type, issues, onAdd, onEdit, onDelete, role, onView }) {
       const [searchTerm, setSearchTerm] = useState('');
-      const filteredIssues = issues.filter(issue => issue.title.toLowerCase().includes(searchTerm.toLowerCase()) || issue.leadingSector.toLowerCase().includes(searchTerm.toLowerCase()));
+      const [filterDate, setFilterDate] = useState('');
+      const [filterSector, setFilterSector] = useState('');
+
+      const filteredIssues = issues.filter(issue => {
+        let matches = true;
+        if (filterDate && issue.date !== filterDate) matches = false;
+        if (filterSector && issue.leadingSector !== filterSector) matches = false;
+        if (searchTerm && !issue.title.toLowerCase().includes(searchTerm.toLowerCase())) matches = false;
+        return matches;
+      });
 
       return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full">
-          <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div><h2 className="text-xl font-bold text-slate-800">{title}</h2><p className="text-sm text-slate-500 mt-1">Total {issues.length} data tersimpan</p></div>
-            <div className="flex flex-wrap w-full sm:w-auto items-center gap-3">
-              <div className="relative flex-1 sm:w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input type="text" placeholder="Cari judul..." className="w-full pl-10 pr-4 py-2 bg-slate-50 border rounded-xl outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-              {role === 'admin' && (
-                <>
-                  {type === 'Media Online' && onFetchNews && (
-                    <button onClick={onFetchNews} disabled={isFetchingNews} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center">{isFetchingNews ? <Loader2 size={18} className="animate-spin mr-1.5" /> : <Globe size={18} className="mr-1.5" />}{isFetchingNews ? 'Menarik...' : 'Tarik Berita'}</button>
-                  )}
-                  <button onClick={onAdd} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center"><Plus size={18} className="mr-1.5" /> Tambah</button>
-                </>
-              )}
+          <div className="p-6 border-b border-slate-100 bg-white flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sticky top-0 z-10">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">{title}</h2>
+              <p className="text-sm text-slate-500 mt-1">Total {filteredIssues.length} data ditampilkan</p>
+            </div>
+            <div className="flex flex-col xl:flex-row w-full xl:w-auto items-start xl:items-center gap-3">
+              <div className="flex flex-col sm:flex-row w-full gap-2">
+                <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm w-full sm:w-auto cursor-pointer" title="Filter berdasarkan tanggal" />
+                <select value={filterSector} onChange={(e) => setFilterSector(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm w-full sm:max-w-[180px] truncate cursor-pointer bg-white" title="Filter berdasarkan perangkat daerah">
+                  <option value="">Semua Perangkat Daerah</option>
+                  {LEADING_SECTORS.map(sec => <option key={sec} value={sec}>{sec}</option>)}
+                </select>
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input type="text" placeholder="Cari judul isu..." className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                </div>
+              </div>
+              {role === 'admin' && (<button onClick={onAdd} className="w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center justify-center shrink-0"><Plus size={16} className="mr-1.5" /> Tambah</button>)}
             </div>
           </div>
+
           <div className="overflow-x-auto p-4">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-slate-50 text-slate-600">
-                <tr><th className="p-4 font-semibold">Tanggal</th><th className="p-4 font-semibold">Judul Isu</th><th className="p-4 font-semibold">Leading Sector</th><th className="p-4 font-semibold text-center">Sentimen</th><th className="p-4 font-semibold text-center">Status</th><th className="p-4 font-semibold text-right">Aksi</th></tr>
+                <tr>
+                  <th className="p-4 font-bold rounded-tl-lg">Tanggal</th>
+                  <th className="p-4 font-bold">Judul Isu</th>
+                  <th className="p-4 font-bold">Leading Sector</th>
+                  <th className="p-4 font-bold text-center">Sentimen</th>
+                  <th className="p-4 font-bold text-center">Status</th>
+                  <th className="p-4 font-bold text-right rounded-tr-lg">Aksi</th>
+                </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredIssues.map((issue) => (
@@ -332,16 +481,24 @@
                     <td className="p-4 text-slate-600">{issue.date}</td>
                     <td className="p-4 font-medium text-slate-800 max-w-[250px] truncate" title={issue.title}>{issue.title}</td>
                     <td className="p-4 text-slate-600">{issue.leadingSector}</td>
-                    <td className="p-4 text-center"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span></td>
-                    <td className="p-4 text-center"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${issue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : issue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>{issue.status || 'Belum Ditangani'}</span></td>
-                    <td className="p-4 text-right">
-                      <button onClick={() => onView(issue)} className="p-2 text-slate-400 hover:text-blue-600"><Eye size={16} /></button>
+                    <td className="p-4 text-center">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${issue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : issue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{issue.status || 'Belum Ditangani'}</span>
+                    </td>
+                    <td className="p-4 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => onView(issue)} className="p-2 text-slate-400 hover:text-blue-600 rounded-lg mr-1"><Eye size={16} /></button>
                       {role === 'admin' && (
-                        <><button onClick={() => onEdit(issue)} className="p-2 text-slate-400 hover:text-amber-600"><Edit2 size={16} /></button><button onClick={() => onDelete(issue.id)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={16} /></button></>
+                        <>
+                          <button onClick={() => onEdit(issue)} className="p-2 text-slate-400 hover:text-amber-600 rounded-lg mr-1"><Edit2 size={16} /></button>
+                          <button onClick={() => onDelete(issue.id)} className="p-2 text-slate-400 hover:text-red-600 rounded-lg"><Trash2 size={16} /></button>
+                        </>
                       )}
                     </td>
                   </tr>
                 ))}
+                {filteredIssues.length === 0 && (<tr><td colSpan="6" className="p-8 text-center text-slate-500">Tidak ada data.</td></tr>)}
               </tbody>
             </table>
           </div>
@@ -349,61 +506,160 @@
       );
     }
 
-    function AnalysisView({ issues, role, agency, onAnalyze, isAnalyzing, onView }) {
-      const issuesForAnalysis = role === 'admin' ? issues : issues.filter(i => i.leadingSector === agency && i.aiAnalysis);
+    function AnalysisView({ issues, role, agency, onAnalyze, isAnalyzing, onView, onPublishToggle, onEditAnalysis }) {
+      const [filterDate, setFilterDate] = useState('');
+      const [filterMedia, setFilterMedia] = useState('');
+
+      const issuesForAnalysis = issues.filter(issue => {
+        if (role !== 'admin' && !issue.analysisPublished) return false;
+        if (filterDate && issue.date !== filterDate) return false;
+        if (filterMedia && issue.sourceType !== filterMedia) return false;
+        return true;
+      });
+
       return (
-        <div className="bg-white rounded-2xl shadow-sm border p-6">
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-slate-800 flex items-center"><BrainCircuit className="mr-2 text-blue-600" /> Analisis Isu</h2>
-            <p className="text-slate-500 text-sm mt-1">{role === 'admin' ? 'Pilih isu untuk dianalisis oleh AI.' : `Menampilkan hasil analisis untuk Perangkat Daerah ${agency}.`}</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {issuesForAnalysis.map(issue => (
-              <div key={issue.id} className="bg-slate-50 border rounded-xl p-5 flex flex-col">
-                <div className="flex justify-between items-start mb-3"><span className="text-xs font-bold px-2 py-1 bg-white border rounded">{issue.sourceType}</span><span className="text-xs text-slate-400">{issue.date}</span></div>
-                <h3 className="font-bold text-slate-800 text-base mb-2 line-clamp-2">{issue.title}</h3>
-                <p className="text-sm text-slate-500 mb-4 flex-1">{issue.leadingSector}</p>
-                <div className="mt-auto space-y-2">
-                  {issue.aiAnalysis ? (
-                    <div className="flex gap-2">
-                       <button onClick={() => onView(issue)} className="flex-1 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-bold flex justify-center items-center"><Eye size={16} className="mr-1.5"/> Lihat Analisis</button>
-                       {role === 'admin' && <button onClick={() => onAnalyze(issue)} disabled={isAnalyzing} className="px-3 py-2 bg-slate-200 text-slate-700 rounded-lg"><BrainCircuit size={16}/></button>}
-                    </div>
-                  ) : (
-                    role === 'admin' ? (<button onClick={() => onAnalyze(issue)} disabled={isAnalyzing} className="w-full py-2 bg-slate-800 text-white rounded-lg text-sm font-bold flex justify-center">{isAnalyzing ? <Loader2 size={16} className="animate-spin mr-2"/> : <BrainCircuit size={16} className="mr-2"/>} Mulai Analisis</button>) 
-                    : (<div className="text-sm text-center text-slate-400 p-2 bg-slate-100 rounded-lg">Belum dianalisis</div>)
-                  )}
-                </div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b pb-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800 flex items-center"><BrainCircuit className="mr-2 text-blue-600" /> Analisis Isu</h2>
+              <p className="text-slate-500 text-sm mt-1">
+                {role === 'admin' ? 'Kelola dan generate analisis isu menggunakan AI.' : 'Daftar analisis isu yang telah dipublikasikan.'}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-500 mb-1">Filter Tanggal</label><input type="date" className="border px-3 py-1.5 rounded-lg text-sm outline-none" value={filterDate} onChange={(e)=>setFilterDate(e.target.value)}/></div>
+              <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-500 mb-1">Filter Media</label>
+                <select className="border px-3 py-1.5 rounded-lg text-sm outline-none bg-white" value={filterMedia} onChange={(e)=>setFilterMedia(e.target.value)}>
+                  <option value="">Semua Media</option><option value="Media Sosial">Media Sosial</option><option value="Media Online">Media Online</option><option value="Media Cetak">Media Cetak</option>
+                </select>
               </div>
-            ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {issuesForAnalysis.map(issue => {
+              const isAllowedToSeeAI = role === 'admin' || role === 'pimpinan' || (role === 'pd' && issue.leadingSector === agency);
+              
+              return (
+                <div key={issue.id} className="bg-slate-50 border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow flex flex-col relative overflow-hidden">
+                  {!issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-amber-100 text-amber-700 text-[9px] font-bold px-2 py-1 rounded-bl-lg">DRAFT</div>}
+                  {issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-700 text-[9px] font-bold px-2 py-1 rounded-bl-lg">PUBLISHED</div>}
+                  
+                  <div className="flex justify-between items-start mb-3 mt-2">
+                    <span className="text-[10px] font-bold px-2 py-1 bg-white border border-slate-200 rounded text-slate-600">{issue.sourceType}</span>
+                    <span className="text-[10px] text-slate-400 font-medium">{issue.date}</span>
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm mb-2 line-clamp-2">{issue.title}</h3>
+                  <p className="text-xs text-blue-600 font-bold mb-4 flex-1">{issue.leadingSector}</p>
+                  
+                  <div className="mt-auto space-y-2">
+                    {issue.aiAnalysis ? (
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <button onClick={() => onView(issue)} className={`flex-1 py-2 rounded-lg text-[11px] font-bold flex justify-center items-center transition-colors ${isAllowedToSeeAI ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-200 text-slate-500'}`}>
+                            {isAllowedToSeeAI ? <><Eye size={14} className="mr-1.5"/> Lihat Detail</> : <><Lock size={14} className="mr-1.5"/> Akses Terbatas</>}
+                          </button>
+                          {role === 'admin' && (
+                            <button onClick={() => onEditAnalysis(issue)} className="px-3 py-2 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-lg transition-colors" title="Edit Manual Analisis">
+                                <Edit2 size={14}/>
+                            </button>
+                          )}
+                        </div>
+                        {role === 'admin' && (
+                          <button onClick={() => onPublishToggle(issue.id, issue.analysisPublished)} className={`w-full py-2 rounded-lg text-[11px] font-bold flex justify-center items-center transition-colors ${issue.analysisPublished ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
+                            {issue.analysisPublished ? 'Unpublish' : <><Send size={14} className="mr-1.5"/> Publish ke Pimpinan & PD</>}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      role === 'admin' && (
+                        <button onClick={() => onAnalyze(issue)} disabled={isAnalyzing} className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold shadow-md transition-all flex items-center justify-center">
+                          {isAnalyzing ? <Loader2 size={14} className="animate-spin mr-2"/> : <BrainCircuit size={14} className="mr-2"/>} Generate Analisis
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {issuesForAnalysis.length === 0 && (
+              <div className="col-span-full py-12 text-center">
+                 <Filter className="mx-auto h-12 w-12 text-slate-300 mb-3"/>
+                 <p className="text-slate-500 text-sm">Tidak ada isu yang sesuai dengan filter.</p>
+              </div>
+            )}
           </div>
         </div>
       );
     }
 
     function IssueModal({ type, onClose, onSave, initialData, isUploading }) {
-      const [formData, setFormData] = useState(initialData || { sourceType: type, title: '', date: new Date().toISOString().split('T')[0], sentiment: 'Netral', leadingSector: LEADING_SECTORS[0], platform: '', postType: '', account: '', link: '', caption: '', domain: '', content: '', printType: '', mediaName: '' });
+      const [formData, setFormData] = useState(initialData || {
+        sourceType: type, title: '', date: new Date().toISOString().split('T')[0],
+        sentiment: 'Netral', leadingSector: LEADING_SECTORS[0],
+        platform: 'Instagram', postType: 'Post Foto/Video', account: '', link: '', caption: '',
+        domain: '', content: '', printType: 'Koran', mediaName: ''
+      });
       const [file, setFile] = useState(null);
+
       const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+      const handleSubmit = (e) => { e.preventDefault(); onSave(formData, file); };
+
       return (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="bg-slate-50 px-6 py-4 flex justify-between items-center border-b"><h3 className="text-xl font-bold">{initialData ? 'Edit Data' : 'Tambah Data'} {type}</h3><button onClick={onClose}><X size={24} /></button></div>
-            <form onSubmit={(e) => { e.preventDefault(); onSave(formData, file); }} className="p-6 overflow-y-auto space-y-5">
+            <div className="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-800">{initialData ? 'Edit Data' : 'Tambah Data'} {type}</h3>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto custom-scrollbar space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium mb-1">Tanggal</label><input type="date" name="date" required value={formData.date} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl" /></div>
-                <div><label className="block text-sm font-medium mb-1">Sentimen</label><select name="sentiment" value={formData.sentiment} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl bg-white"><option>Positif</option><option>Netral</option><option>Negatif</option></select></div>
+                <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Tanggal</label><input type="date" name="date" required value={formData.date} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
+                <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Sentimen</label><select name="sentiment" value={formData.sentiment} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white"><option value="Positif">Positif</option><option value="Netral">Netral</option><option value="Negatif">Negatif</option></select></div>
               </div>
-              <div><label className="block text-sm font-medium mb-1">Judul Isu</label><input type="text" name="title" required value={formData.title} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl" /></div>
-              <div><label className="block text-sm font-medium mb-1">Leading Sector</label><select name="leadingSector" value={formData.leadingSector} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl bg-white">{LEADING_SECTORS.map(sec => <option key={sec}>{sec}</option>)}</select></div>
-              
-              {/* Conditional Inputs based on Type omitted for brevity but they are standard inputs */}
-              {type === 'Media Sosial' && (<div><label className="block text-sm mb-1">Isi/Caption</label><textarea name="caption" rows="3" value={formData.caption} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl"></textarea></div>)}
-              {type === 'Media Online' && (<div><label className="block text-sm mb-1">Isi Berita</label><textarea name="content" rows="3" value={formData.content} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl"></textarea></div>)}
-              {type === 'Media Cetak' && (<div><label className="block text-sm mb-1">Isi Berita</label><textarea name="content" rows="3" value={formData.content} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl"></textarea></div>)}
+              <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Judul Isu</label><input type="text" name="title" required value={formData.title} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
+              <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Leading Sector</label><select name="leadingSector" value={formData.leadingSector} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white">{LEADING_SECTORS.map(sec => <option key={sec} value={sec}>{sec}</option>)}</select></div>
+              {type === 'Media Sosial' && (
+                 <>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Platform</label><select name="platform" value={formData.platform} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl bg-white"><option value="Instagram">Instagram</option><option value="Twitter/X">Twitter/X</option><option value="TikTok">TikTok</option><option value="Facebook">Facebook</option></select></div>
+                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Jenis</label><select name="postType" value={formData.postType} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl bg-white"><option value="Komentar">Komentar</option><option value="DM">DM</option><option value="Post Foto/Video">Post Foto/Video</option></select></div>
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Akun</label><input type="text" name="account" value={formData.account} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
+                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Link URL</label><input type="url" name="link" value={formData.link} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
+                   </div>
+                   <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Isi/Caption</label><textarea name="caption" rows="3" value={formData.caption} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none"></textarea></div>
+                 </>
+              )}
+              {type === 'Media Online' && (
+                 <>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Domain</label><input type="text" name="domain" value={formData.domain} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
+                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Link Berita</label><input type="url" name="link" value={formData.link} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
+                   </div>
+                   <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Isi Berita</label><textarea name="content" rows="4" value={formData.content} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none"></textarea></div>
+                 </>
+              )}
+              {type === 'Media Cetak' && (
+                 <>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Jenis Media</label><select name="printType" value={formData.printType} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl bg-white"><option value="Koran">Koran</option><option value="Majalah">Majalah</option><option value="Tabloid">Tabloid</option></select></div>
+                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Nama Media</label><input type="text" name="mediaName" value={formData.mediaName} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
+                   </div>
+                   <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Isi Berita</label><textarea name="content" rows="4" value={formData.content} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none"></textarea></div>
+                 </>
+              )}
 
-              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl"><label className="block text-sm font-bold text-slate-700 mb-2"><Upload size={16} className="inline mr-2"/> Upload Lampiran</label><input type="file" onChange={(e) => setFile(e.target.files[0])} className="text-sm" /></div>
-              <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={onClose} className="px-5 py-2.5 bg-slate-100 rounded-xl">Batal</button><button type="submit" disabled={isUploading} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold flex items-center">{isUploading ? <Loader2 className="animate-spin"/> : 'Simpan'}</button></div>
+              <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 border-dashed">
+                <label className="block text-[11px] font-bold text-slate-700 mb-2 flex items-center"><Upload size={14} className="mr-1.5 text-blue-600"/> Upload Lampiran (Opsional)</label>
+                <input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files[0])} className="text-xs file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:font-bold file:bg-blue-100 file:text-blue-700" />
+              </div>
+
+              <div className="pt-4 border-t flex justify-end gap-2 sticky bottom-0 bg-white">
+                <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-600 font-bold hover:bg-slate-100 rounded-xl">Batal</button>
+                <button type="submit" disabled={isUploading} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl flex items-center">{isUploading ? <Loader2 size={16} className="animate-spin mr-1.5"/> : <Save size={16} className="mr-1.5" />} Simpan</button>
+              </div>
             </form>
           </div>
         </div>
@@ -414,16 +670,37 @@
       const [status, setStatus] = useState(issue.status || 'Belum Ditangani');
       const [notes, setNotes] = useState(issue.handlingNotes || '');
       const [file, setFile] = useState(null);
+
       return (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
-            <div className="bg-emerald-600 px-6 py-4 flex justify-between items-center text-white"><h3 className="text-lg font-bold flex items-center"><Edit2 size={18} className="mr-2"/> Update Penanganan</h3><button onClick={onClose}><X size={24} /></button></div>
-            <div className="p-6 space-y-4">
-              <select value={status} onChange={e => setStatus(e.target.value)} className="w-full px-3 py-2 border rounded-xl font-bold bg-slate-50"><option>Belum Ditangani</option><option>Dalam Proses</option><option>Selesai</option></select>
-              <textarea rows="4" value={notes} onChange={e => setNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl" placeholder="Catatan..."></textarea>
-              <input type="file" onChange={(e) => setFile(e.target.files[0])} className="text-sm bg-emerald-50 p-2 rounded-xl w-full" />
-              <button onClick={() => onSave(status, notes, file)} disabled={isUploading} className="w-full py-2 bg-emerald-600 text-white font-bold rounded-xl flex justify-center items-center">{isUploading ? <Loader2 className="animate-spin" /> : 'Simpan'}</button>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+            <div className="bg-emerald-600 px-5 py-4 flex justify-between items-center text-white"><h3 className="text-base font-bold flex items-center"><Edit2 size={16} className="mr-2"/> Update Penanganan</h3><button onClick={onClose} className="hover:text-emerald-200"><X size={18} /></button></div>
+            <div className="p-5 space-y-4">
+               <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Status Penanganan</label><select value={status} onChange={e => setStatus(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl font-bold bg-slate-50 outline-none"><option value="Belum Ditangani">Belum Ditangani</option><option value="Dalam Proses">Dalam Proses</option><option value="Selesai">Selesai</option></select></div>
+               <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Catatan Tindak Lanjut</label><textarea rows="3" value={notes} onChange={e => setNotes(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none"></textarea></div>
+               <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100 border-dashed"><label className="block text-[11px] font-bold text-slate-700 mb-2 flex items-center"><Upload size={14} className="mr-1.5 text-emerald-600"/> Upload Bukti Penanganan</label><input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files[0])} className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:font-bold file:bg-emerald-100 file:text-emerald-700" /></div>
+              <div className="pt-2 flex justify-end gap-2"><button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 font-bold rounded-xl">Batal</button><button onClick={() => onSave(status, notes, file)} disabled={isUploading} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl flex items-center">{isUploading ? <Loader2 size={16} className="animate-spin mr-1.5"/> : <CheckCircle2 size={16} className="mr-1.5"/>} Simpan</button></div>
             </div>
+          </div>
+        </div>
+      );
+    }
+
+    function AnalysisEditModal({ issue, onClose, onSave, isUploading }) {
+      const [analysis, setAnalysis] = useState(issue.aiAnalysis?.analysis || '');
+      const [policy, setPolicy] = useState(issue.aiAnalysis?.policyRecommendation || '');
+      const [publication, setPublication] = useState(issue.aiAnalysis?.publicationRecommendation || '');
+
+      return (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
+            <div className="bg-amber-500 px-6 py-4 flex justify-between items-center text-white"><h3 className="text-base font-bold flex items-center"><Edit2 size={16} className="mr-2"/> Edit Manual Analisis & Rekomendasi</h3><button onClick={onClose} className="hover:text-amber-200"><X size={18} /></button></div>
+            <div className="p-6 overflow-y-auto custom-scrollbar space-y-4">
+               <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Deskripsi Analisis Isu</label><textarea rows="5" value={analysis} onChange={e => setAnalysis(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none"></textarea></div>
+               <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Rekomendasi Kebijakan</label><textarea rows="5" value={policy} onChange={e => setPolicy(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none"></textarea></div>
+               <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Rekomendasi Publikasi</label><textarea rows="5" value={publication} onChange={e => setPublication(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none"></textarea></div>
+            </div>
+            <div className="bg-slate-50 border-t p-4 flex justify-end gap-2"><button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 font-bold rounded-xl">Batal</button><button onClick={() => onSave(issue.id, { analysis, policyRecommendation: policy, publicationRecommendation: publication })} disabled={isUploading} className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl flex items-center">{isUploading ? <Loader2 size={16} className="animate-spin mr-1.5"/> : <Save size={16} className="mr-1.5"/>} Simpan Perubahan</button></div>
           </div>
         </div>
       );
@@ -431,133 +708,124 @@
 
     function App() {
       const [user, setUser] = useState(null);
-      const [userRole, setUserRole] = useState('visitor');
+      const [userRole, setUserRole] = useState('pd'); // pd, admin, pimpinan
       const [userProfile, setUserProfile] = useState(null);
       const [isSidebarOpen, setIsSidebarOpen] = useState(true);
       const [activeTab, setActiveTab] = useState('dashboard');
       const [issues, setIssues] = useState([]);
       const [isLoading, setIsLoading] = useState(true);
+      const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+      const [isUploading, setIsUploading] = useState(false);
+      const [isAnalyzing, setIsAnalyzing] = useState(false);
+
       const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
       const [editingIssue, setEditingIssue] = useState(null);
       const [viewingIssue, setViewingIssue] = useState(null);
       const [handlingIssue, setHandlingIssue] = useState(null);
-      const [isAnalyzing, setIsAnalyzing] = useState(false);
-      const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
-      const [isUploading, setIsUploading] = useState(false);
-      const [isFetchingNews, setIsFetchingNews] = useState(false);
+      const [editingAnalysisIssue, setEditingAnalysisIssue] = useState(null);
 
       const showToast = (message, type = 'info') => {
-        setToast({ show: true, message, type });
-        setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 4000);
+        setToast({ show: true, message, type }); setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 4000);
       };
 
       useEffect(() => {
         if (!auth) { setIsLoading(false); return; }
-        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-          try {
-            if (currentUser) {
-              setUser(currentUser);
-              const docSnap = await getDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'info'));
-              if (docSnap.exists()) { setUserRole(docSnap.data().role || 'visitor'); setUserProfile(docSnap.data()); }
-            } else { setUser(null); setUserRole('visitor'); setUserProfile(null); }
-          } catch (err) { console.warn("Abaikan auto-login", err); } finally { setIsLoading(false); }
+        const unsub = onAuthStateChanged(auth, async (currentUser) => {
+          if (currentUser) {
+            setUser(currentUser);
+            const docSnap = await getDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'info'));
+            if (docSnap.exists()) { setUserRole(docSnap.data().role || 'pd'); setUserProfile(docSnap.data()); }
+          } else { setUser(null); setUserRole('pd'); setUserProfile(null); }
+          setIsLoading(false);
         });
-        return () => unsubscribe();
+        return () => unsub();
       }, []);
 
       useEffect(() => {
         if (!user || !db) return;
         const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), orderBy('createdAt', 'desc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          setIssues(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-        return () => unsubscribe();
+        const unsub = onSnapshot(q, (snapshot) => setIssues(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
+        return () => unsub();
       }, [user]);
 
       const handleLogout = async () => { if (auth) await signOut(auth); };
 
-      const uploadFileToStorage = async (file, pathPrefix) => {
+      const uploadFileToStorage = async (file, prefix) => {
         if (!storage) return null;
         return new Promise((resolve, reject) => {
-          const storageRef = ref(storage, `issues_attachments/${pathPrefix}_${Date.now()}_${file.name}`);
-          const uploadTask = uploadBytesResumable(storageRef, file);
-          uploadTask.on('state_changed', null, (error) => reject(error), async () => resolve(await getDownloadURL(uploadTask.snapshot.ref)));
+          const task = uploadBytesResumable(ref(storage, `issues/${prefix}_${Date.now()}_${file.name}`), file);
+          task.on('state_changed', null, reject, async () => resolve(await getDownloadURL(task.snapshot.ref)));
         });
       };
 
-      const saveIssue = async (issueData, attachmentFile) => {
+      const saveIssue = async (data, file) => {
         if (userRole !== 'admin') return;
         try {
           setIsUploading(true);
-          let attachmentUrl = issueData.attachmentUrl || null;
-          if (attachmentFile) attachmentUrl = await uploadFileToStorage(attachmentFile, 'issue');
-          const finalData = { ...issueData, attachmentUrl, updatedAt: new Date().toISOString() };
-          
+          let attachmentUrl = data.attachmentUrl || null;
+          if (file) attachmentUrl = await uploadFileToStorage(file, 'issue');
+          const finalData = { ...data, attachmentUrl, updatedAt: new Date().toISOString() };
           if (editingIssue) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', editingIssue.id), finalData);
-          else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), { ...finalData, status: 'Belum Ditangani', createdAt: new Date().toISOString() });
-          
-          showToast("Berhasil tersimpan", "success");
-          setIsIssueModalOpen(false); setEditingIssue(null);
-        } catch (error) { showToast("Gagal menyimpan", "error"); } finally { setIsUploading(false); }
+          else await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), { ...finalData, status: 'Belum Ditangani', analysisPublished: false, createdAt: new Date().toISOString() });
+          showToast("Tersimpan", "success"); setIsIssueModalOpen(false); setEditingIssue(null);
+        } catch (e) { showToast("Gagal menyimpan", "error"); } finally { setIsUploading(false); }
       };
 
       const deleteIssue = async (id) => {
         if (userRole === 'admin') await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', id));
       };
 
-      const saveHandlingUpdate = async (status, notes, attachmentFile) => {
+      const saveHandlingUpdate = async (status, notes, file) => {
         if (!handlingIssue) return;
         try {
           setIsUploading(true);
           let handlingAttachmentUrl = handlingIssue.handlingAttachmentUrl || null;
-          if (attachmentFile) handlingAttachmentUrl = await uploadFileToStorage(attachmentFile, 'handling');
+          if (file) handlingAttachmentUrl = await uploadFileToStorage(file, 'handling');
           await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', handlingIssue.id), { status, handlingNotes: notes, handlingAttachmentUrl, handlingUpdatedAt: new Date().toISOString() });
-          showToast("Update tersimpan", "success");
-          setHandlingIssue(null); setViewingIssue({...handlingIssue, status, handlingNotes: notes, handlingAttachmentUrl});
-        } catch (error) { showToast("Gagal", "error"); } finally { setIsUploading(false); }
+          showToast("Update tersimpan", "success"); setHandlingIssue(null); setViewingIssue({...handlingIssue, status, handlingNotes: notes, handlingAttachmentUrl});
+        } catch (e) { showToast("Gagal", "error"); } finally { setIsUploading(false); }
       };
 
-      const handleFetchNews = async () => {
+      const saveAnalysisEdit = async (id, updatedAnalysis) => {
         if (userRole !== 'admin') return;
-        setIsFetchingNews(true); showToast("Mencari berita...", "info");
         try {
-          const q = encodeURIComponent('"Pemkot Bandung" OR "Pemerintah Kota Bandung" OR "Muhammad Farhan"');
-          const res = await fetch(`https://gnews.io/api/v4/search?q=${q}&lang=id&country=id&max=5&apikey=${GNEWS_API_KEY}`);
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.errors?.[0] || 'Gagal mengambil berita');
-          
-          let added = 0;
-          for (const article of data.articles) {
-            if (!issues.some(i => i.title.toLowerCase() === article.title.toLowerCase())) {
-              await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), { sourceType: 'Media Online', title: article.title, date: article.publishedAt.split('T')[0], domain: article.source.name, link: article.url, content: article.description, sentiment: 'Netral', leadingSector: 'Lainnya', status: 'Belum Ditangani', createdAt: new Date().toISOString() });
-              added++;
-            }
-          }
-          showToast(added > 0 ? `Menarik ${added} berita` : "Tidak ada berita baru", "success");
-        } catch (e) {
-          showToast("Menyuntikkan data simulasi (Browser memblokir API GNews)", "info");
-          await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), { sourceType: 'Media Online', title: "Simulasi: Pemkot Bandung Perbaiki Jalan", date: new Date().toISOString().split('T')[0], domain: "Simulasi News", link: "#", content: "Dinas PU Pemkot Bandung menargetkan perbaikan jalan selesai...", sentiment: 'Netral', leadingSector: 'Dinas Pekerjaan Umum', status: 'Belum Ditangani', createdAt: new Date().toISOString() });
-        } finally { setIsFetchingNews(false); }
+          setIsUploading(true);
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', id), { aiAnalysis: updatedAnalysis });
+          showToast("Analisis diupdate", "success"); setEditingAnalysisIssue(null);
+        } catch (e) { showToast("Gagal update", "error"); } finally { setIsUploading(false); }
+      };
+
+      const togglePublishAnalysis = async (id, currentStatus) => {
+        if (userRole !== 'admin') return;
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', id), { analysisPublished: !currentStatus });
+        showToast(!currentStatus ? "Dipublish" : "Ditarik (Unpublish)", "success");
       };
 
       const handleAnalyzeAI = async (issue) => {
         if (userRole !== 'admin') return;
-        setIsAnalyzing(true); showToast("AI sedang menganalisis...", "info");
+        setIsAnalyzing(true); showToast("AI menganalisis...", "info");
         try {
-          const prompt = `Sebagai analis kebijakan Pemerintah Kota Bandung era Muhammad Farhan, analisislah isu: Judul: ${issue.title}. Detail: ${issue.content || 'Tidak ada detail'}. Sektor: ${issue.leadingSector}. Buat JSON: {"analysis": "...", "policyRecommendation": "1. Me...\\n2. Me...", "publicationRecommendation": "1. Me...\\n2. Me..."}`;
+          const prompt = `Sebagai analis kebijakan ahli Pemerintah Kota Bandung era Muhammad Farhan, analisislah isu: Judul: ${issue.title}. Detail: ${issue.content || issue.caption || 'Tidak ada detail'}. Sektor: ${issue.leadingSector}. 
+          Tugas:
+          1. Buat 'analysis' mendalam.
+          2. Buat 'policyRecommendation' dengan memberikan rekomendasi sebanyak mungkin yang relevan dengan visi misi program Pemkot Bandung era Muhammad Farhan. Pisahkan setiap rekomendasi dengan nomor ke bawah, dan SETIAP REKOMENDASI WAJIB diawali dengan kata kerja "Me...".
+          3. Buat 'publicationRecommendation' (sama, bernomor ke bawah, wajib diawali "Me...").
+          Format JSON: {"analysis": "...", "policyRecommendation": "1. Me...\\n2. Me...", "publicationRecommendation": "1. Me...\\n2. Me..."}`;
+          
           let aiResult = {
-            analysis: `Berdasarkan analisis awal, isu "${issue.title}" berdampak langsung pada reputasi kinerja Pemkot Bandung.`,
-            policyRecommendation: "1. Menginstruksikan tim terkait untuk melakukan investigasi lapangan.\n2. Mengevaluasi standar pelayanan operasional (SOP).\n3. Mengalokasikan anggaran tanggap darurat.",
-            publicationRecommendation: "1. Mempublikasikan rilis pers klarifikasi melalui kanal resmi.\n2. Mengadakan konferensi pers oleh juru bicara."
+            analysis: `Berdasarkan analisis awal, isu "${issue.title}" berdampak pada efektivitas pelayanan Pemkot Bandung.`,
+            policyRecommendation: "1. Menginstruksikan tim terkait untuk melakukan investigasi lapangan.\n2. Mengevaluasi standar pelayanan operasional (SOP).",
+            publicationRecommendation: "1. Mempublikasikan klarifikasi resmi.\n2. Mengadakan konferensi pers."
           };
+          
           if (GOOGLE_SCRIPT_URL && !GOOGLE_SCRIPT_URL.includes("MASUKKAN")) {
             const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'analyzeIssue', prompt }) });
             const result = await res.json();
             if (result.status === 'success') aiResult = JSON.parse(result.data);
           }
           await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', issue.id), { aiAnalysis: aiResult, analyzedAt: new Date().toISOString() });
-          showToast("Analisis AI selesai", "success");
-        } catch (error) { showToast("Gagal analisis", "error"); } finally { setIsAnalyzing(false); }
+          showToast("Selesai", "success");
+        } catch (e) { showToast("Gagal analisis", "error"); } finally { setIsAnalyzing(false); }
       };
 
       if (!isFirebaseConfigured) return <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4"><div className="bg-white p-8 rounded-2xl shadow-lg"><h2 className="font-bold text-xl">Konfigurasi Firebase Diperlukan</h2></div></div>;
@@ -574,54 +842,61 @@
 
       return (
         <div className="min-h-screen bg-slate-50 flex overflow-hidden font-sans">
-          {toast.show && (<div className={`fixed top-4 right-4 z-[9999] px-6 py-3 rounded-xl shadow-2xl flex items-center animate-bounce ${toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'} text-white`}><span className="font-medium">{toast.message}</span></div>)}
+          {toast.show && (<div className={`fixed top-4 right-4 z-[9999] px-5 py-2.5 text-sm rounded-xl shadow-2xl flex items-center animate-bounce ${toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'} text-white`}><span className="font-medium">{toast.message}</span></div>)}
           
-          <aside className={`bg-slate-900 text-slate-300 w-64 flex-shrink-0 flex flex-col transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full fixed h-full z-40'}`}>
-            <div className="p-6 bg-slate-950 flex items-center justify-between"><div className="flex items-center gap-3"><Activity className="text-blue-500" /><span className="text-white font-bold text-lg">Prokopim BDG</span></div></div>
-            <nav className="flex-1 py-6 px-4 space-y-2">
-              {navItems.map(item => (<button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl ${activeTab === item.id ? 'bg-blue-600 text-white' : 'hover:bg-slate-800'}`}><item.icon size={20} /><span className="font-medium">{item.label}</span></button>))}
+          <aside className={`bg-slate-900 text-slate-300 w-56 flex-shrink-0 flex flex-col transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full fixed h-full z-40'}`}>
+            <div className="p-5 bg-slate-950 flex items-center justify-between"><div className="flex items-center gap-3"><Activity className="text-blue-500" size={20}/><span className="text-white font-bold text-base">Prokopim BDG</span></div></div>
+            <nav className="flex-1 py-4 px-3 space-y-1">
+              {navItems.map(item => (<button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${activeTab === item.id ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800'}`}><item.icon size={18} /><span className="font-bold text-xs">{item.label}</span></button>))}
             </nav>
-            <div className="p-4"><button onClick={handleLogout} className="w-full py-2 bg-red-500/10 text-red-400 rounded-lg flex justify-center"><LogOut size={16} className="mr-2"/> Logout</button></div>
+            <div className="p-4"><button onClick={handleLogout} className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 transition-colors text-red-400 rounded-lg flex justify-center text-xs font-bold"><LogOut size={16} className="mr-2"/> Logout</button></div>
           </aside>
 
           <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-            <header className="bg-white px-6 py-4 border-b flex justify-between"><button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 bg-slate-100 rounded-lg"><Menu size={20}/></button><span className="font-bold text-sm bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full">{userProfile?.name} ({userRole === 'admin' ? 'Admin' : userProfile?.agency})</span></header>
-            <div className="flex-1 overflow-y-auto p-6 scroll-smooth"><div className="max-w-7xl mx-auto">
+            <header className="bg-white px-5 py-3 border-b flex justify-between items-center"><button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-slate-100 bg-slate-50 border rounded-lg"><Menu size={18}/></button><span className="font-bold text-[11px] bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full shadow-sm">{userProfile?.name} ({userRole === 'admin' ? 'Admin' : (userRole === 'pimpinan' ? 'Pimpinan' : userProfile?.agency)})</span></header>
+            <div className="flex-1 overflow-y-auto p-5 scroll-smooth"><div className="max-w-7xl mx-auto">
               {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} />}
               {activeTab === 'social' && <DataTableView title="Media Sosial" type="Media Sosial" issues={issues.filter(i=>i.sourceType==='Media Sosial')} onAdd={()=>setIsIssueModalOpen('Media Sosial')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Sosial');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
-              {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} onFetchNews={handleFetchNews} isFetchingNews={isFetchingNews} />}
+              {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
               {activeTab === 'print' && <DataTableView title="Media Cetak" type="Media Cetak" issues={issues.filter(i=>i.sourceType==='Media Cetak')} onAdd={()=>setIsIssueModalOpen('Media Cetak')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Cetak');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
-              {activeTab === 'analysis' && <AnalysisView issues={issues} role={userRole} agency={userProfile?.agency} onAnalyze={handleAnalyzeAI} isAnalyzing={isAnalyzing} onView={setViewingIssue} />}
+              {activeTab === 'analysis' && <AnalysisView issues={issues} role={userRole} agency={userProfile?.agency} onAnalyze={handleAnalyzeAI} isAnalyzing={isAnalyzing} onView={setViewingIssue} onPublishToggle={togglePublishAnalysis} onEditAnalysis={setEditingAnalysisIssue}/>}
             </div></div>
             
             {isIssueModalOpen && <IssueModal type={isIssueModalOpen} onClose={() => {setIsIssueModalOpen(false); setEditingIssue(null);}} onSave={saveIssue} initialData={editingIssue} isUploading={isUploading}/>}
-            {handlingIssue && <HandlingModal issue={handlingIssue} onClose={() => setHandlingIssue(null)} onSave={saveHandlingUpdate} isUploading={isUploading}/>}
-            
+            {handlingIssue && <HandlingModal issue={handlingIssue} onClose={() => {setHandlingIssue(null); setViewingIssue(handlingIssue);}} onSave={saveHandlingUpdate} isUploading={isUploading}/>}
+            {editingAnalysisIssue && <AnalysisEditModal issue={editingAnalysisIssue} onClose={() => setEditingAnalysisIssue(null)} onSave={saveAnalysisEdit} isUploading={isUploading}/>}
+
             {viewingIssue && (
               <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl w-full max-w-4xl p-6 overflow-y-auto max-h-[90vh] relative">
-                  <button onClick={()=>setViewingIssue(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full"><X size={20}/></button>
-                  <h2 className="text-2xl font-bold mb-4">{viewingIssue.title}</h2>
+                <div className="bg-white rounded-2xl w-full max-w-4xl p-6 overflow-y-auto max-h-[90vh] relative shadow-2xl">
+                  <button onClick={()=>setViewingIssue(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X size={18}/></button>
+                  <h2 className="text-xl font-bold mb-4 pr-10">{viewingIssue.title}</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <div className="bg-slate-50 p-4 rounded-xl"><p className="font-bold text-slate-500 mb-1">Isi/Konten</p><p className="text-sm">{viewingIssue.content || viewingIssue.caption || '-'}</p></div>
-                      {viewingIssue.attachmentUrl && <a href={viewingIssue.attachmentUrl} target="_blank" className="text-blue-600 text-sm font-bold block">Lihat Lampiran Isu</a>}
-                      <div className="bg-slate-50 p-4 rounded-xl">
-                        <p className="font-bold text-slate-500 mb-2">Status Penanganan: {viewingIssue.status}</p>
-                        {viewingIssue.handlingNotes && <p className="text-sm mt-2">{viewingIssue.handlingNotes}</p>}
-                        {viewingIssue.handlingAttachmentUrl && <a href={viewingIssue.handlingAttachmentUrl} target="_blank" className="text-emerald-600 text-sm font-bold block mt-2">Lihat Bukti Penanganan</a>}
-                        {(userRole === 'admin' || userProfile?.agency === viewingIssue.leadingSector) && (<button onClick={() => {setHandlingIssue(viewingIssue); setViewingIssue(null);}} className="w-full mt-4 bg-emerald-600 text-white py-2 rounded-lg font-bold">Update Penanganan</button>)}
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><p className="font-bold text-slate-500 mb-1 text-[11px]">Isi/Konten</p><p className="text-sm">{viewingIssue.content || viewingIssue.caption || '-'}</p></div>
+                      {viewingIssue.attachmentUrl && <a href={viewingIssue.attachmentUrl} target="_blank" className="inline-flex bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-bold text-xs"><Eye size={14} className="mr-1.5"/> Lihat Lampiran Isu</a>}
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <p className="font-bold text-slate-500 mb-2 text-[11px]">Status Penanganan</p><p className="text-sm font-bold">Status: {viewingIssue.status}</p>
+                        {viewingIssue.handlingNotes && <p className="text-sm border-t pt-2 mt-2">{viewingIssue.handlingNotes}</p>}
+                        {viewingIssue.handlingAttachmentUrl && <a href={viewingIssue.handlingAttachmentUrl} target="_blank" className="inline-flex mt-3 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg font-bold text-[11px]"><ImageIcon size={14} className="mr-1"/> Bukti Penanganan</a>}
+                        {(userRole === 'admin' || (userRole === 'pd' && userProfile?.agency === viewingIssue.leadingSector)) && (<button onClick={() => {setHandlingIssue(viewingIssue); setViewingIssue(null);}} className="w-full mt-4 bg-emerald-600 text-white py-2 rounded-lg font-bold text-[11px] flex items-center justify-center"><Edit2 size={14} className="mr-2"/> Update Penanganan</button>)}
                       </div>
                     </div>
                     <div>
-                      {viewingIssue.aiAnalysis && (userRole === 'admin' || userProfile?.agency === viewingIssue.leadingSector) ? (
+                      {viewingIssue.aiAnalysis && (userRole === 'admin' || userRole === 'pimpinan' || (userRole === 'pd' && userProfile?.agency === viewingIssue.leadingSector)) ? (
                         <div className="bg-blue-50 p-5 rounded-xl border border-blue-100">
-                          <h4 className="font-bold text-blue-900 mb-3"><BrainCircuit className="inline mr-2"/> Analisis AI</h4>
-                          <p className="text-sm font-bold">Analisis:</p><p className="text-sm mb-4">{viewingIssue.aiAnalysis.analysis}</p>
-                          <p className="text-sm font-bold">Rekomendasi Kebijakan:</p><p className="text-sm whitespace-pre-wrap mb-4">{viewingIssue.aiAnalysis.policyRecommendation}</p>
-                          <p className="text-sm font-bold">Rekomendasi Publikasi:</p><p className="text-sm whitespace-pre-wrap">{viewingIssue.aiAnalysis.publicationRecommendation}</p>
+                          <h4 className="font-bold text-blue-900 mb-4 flex items-center"><BrainCircuit className="mr-2" size={18}/> Analisis AI</h4>
+                          <p className="text-[11px] text-slate-700 font-bold mb-1">Analisis:</p><p className="text-sm whitespace-pre-wrap mb-4">{viewingIssue.aiAnalysis.analysis}</p>
+                          <p className="text-[11px] text-slate-700 font-bold mb-1">Rekomendasi Kebijakan:</p><p className="text-sm whitespace-pre-wrap mb-4">{viewingIssue.aiAnalysis.policyRecommendation}</p>
+                          <p className="text-[11px] text-slate-700 font-bold mb-1">Rekomendasi Publikasi:</p><p className="text-sm whitespace-pre-wrap">{viewingIssue.aiAnalysis.publicationRecommendation}</p>
                         </div>
-                      ) : (<div className="bg-slate-50 p-5 rounded-xl text-center text-slate-500">Isu ini belum dianalisis atau bukan kewenangan Anda.</div>)}
+                      ) : viewingIssue.aiAnalysis ? (
+                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center flex flex-col items-center justify-center h-full text-slate-500">
+                           <Lock size={24} className="mb-2"/>
+                           <p className="font-bold mb-1">Akses Terbatas</p>
+                           <p className="text-xs">Anda hanya diizinkan melihat detail judul dan laporan penanganan. Laporan Analisis mendalam isu ini hanya dapat diakses oleh Pimpinan dan Perangkat Daerah yang menjadi Leading Sector.</p>
+                        </div>
+                      ) : (<div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-slate-500 text-sm">Isu ini belum dianalisis.</div>)}
                     </div>
                   </div>
                 </div>
