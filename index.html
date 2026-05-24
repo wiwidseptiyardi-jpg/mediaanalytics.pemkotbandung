@@ -83,7 +83,7 @@
     const storage = app ? getStorage(app) : null;
     const appId = 'media-analytics-bdg';
 
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzaia1vrwDGIIarTC1u0YXaHWA_-1Lz-LgH0SsR0H-o65o7T9OdYfJcNqjBte3NJQmDCA/exec';
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzklnJMSsLK5BxOkYWXaLHNLKY6VEmMj2uMROVtXwqpfVOZeXquVs_S1fK9UGMqPU1Mg/exec';
 
     // MASUKKAN API KEY OPENAI ANDA DI BAWAH INI (Di dalam tanda kutip)
     const OPENAI_API_KEY = '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';
@@ -1061,12 +1061,13 @@
               aiResult = JSON.parse(contentText);
           } catch (openaiError) {
               const errMsg = openaiError?.message?.toLowerCase() || "";
-              const isQuotaError = errMsg.includes("quota") || errMsg.includes("exceeded") || errMsg.includes("billing") || errMsg.includes("429");
+              // Menambahkan 'failed to fetch' dan 'network' ke dalam pemicu fallback AI Cadangan
+              const isQuotaError = errMsg.includes("quota") || errMsg.includes("exceeded") || errMsg.includes("billing") || errMsg.includes("429") || errMsg.includes("failed to fetch") || errMsg.includes("network error");
               
               if (!isQuotaError) console.error("OpenAI Error:", openaiError);
               
               if (isQuotaError) {
-                  showToast("Kuota OpenAI habis. Menggunakan AI Cadangan gratis...", "info");
+                  showToast("Koneksi/Kuota OpenAI bermasalah. Menggunakan AI Cadangan gratis...", "info");
                   const apiKey = ""; 
                   const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
                       method: 'POST',
