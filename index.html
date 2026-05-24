@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Media Analytics - Pemkot Bandung</title>
+  <title>Media Monitoring - Pemkot Bandung</title>
 
   <!-- Menggunakan Tailwind CSS langsung via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -12,6 +12,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Library untuk Export ke PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   
   <style>
     /* Compact Mode: Menurunkan root font-size agar elemen proporsional dan muat lebih banyak data */
@@ -41,7 +44,7 @@
       LayoutDashboard, Share2, Globe, Newspaper, BrainCircuit, 
       Menu, X, Search, Plus, Activity, LogOut, Upload, CheckCircle2,
       Building, Image as ImageIcon, Loader2, Save, Trash2, Edit2, Eye, BarChart2, Calendar,
-      Filter, Send, Lock
+      Filter, Send, Lock, Brain, Download, FileText
     } from 'https://esm.sh/lucide-react@0.378.0?deps=react@18.3.1';
 
     import { 
@@ -57,7 +60,7 @@
       signOut, onAuthStateChanged, sendPasswordResetEmail
     } from 'https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js';
     import { 
-      getFirestore, doc, setDoc, getDoc, collection, onSnapshot, 
+      initializeFirestore, doc, setDoc, getDoc, collection, onSnapshot, 
       addDoc, updateDoc, deleteDoc, query, orderBy
     } from 'https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js';
     import { 
@@ -76,11 +79,14 @@
     const isFirebaseConfigured = !firebaseConfig.apiKey.includes("MASUKKAN");
     const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
     const auth = app ? getAuth(app) : null;
-    const db = app ? getFirestore(app) : null;
+    const db = app ? initializeFirestore(app, { experimentalForceLongPolling: true }) : null;
     const storage = app ? getStorage(app) : null;
     const appId = 'media-analytics-bdg';
 
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzaia1vrwDGIIarTC1u0YXaHWA_-1Lz-LgH0SsR0H-o65o7T9OdYfJcNqjBte3NJQmDCA/exec';
+
+    // MASUKKAN API KEY OPENAI ANDA DI BAWAH INI (Di dalam tanda kutip)
+    const OPENAI_API_KEY = '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';
 
     const LEADING_SECTORS = [
       "Inspektorat", "Badan Perencanaan Pembangunan Riset dan Inovasi Daerah", "Badan Kepegawaian dan Pengembangan Sumber Daya Manusia", 
@@ -100,7 +106,9 @@
       "Kecamatan Bojongloa Kidul", "Kecamatan Babakan Ciparay", "Kecamatan Bandung Kulon", "Kecamatan Regol", "Kecamatan Lengkong", 
       "Kecamatan Batununggal", "Kecamatan Kiaracondong", "Kecamatan Arcamanik", "Kecamatan Cibiru", "Kecamatan Rancasari", 
       "Kecamatan Antapani", "Kecamatan Bandung Kidul", "Kecamatan Gedebage", "Kecamatan Panyileukan", "Kecamatan Cinambo", 
-      "Kecamatan Mandalajati", "Kecamatan Ujungberung", "Kecamatan Buahbatu", "Lainnya"
+      "Kecamatan Mandalajati", "Kecamatan Ujungberung", "Kecamatan Buahbatu", 
+      "Perumda Pasar Juara", "Perumda Tirtawening", "PT Bandung Infra Investama", "Perumda Bank Bandung",
+      "Lainnya"
     ];
 
     const COLORS = { Positif: '#10b981', Negatif: '#ef4444', Netral: '#f59e0b' };
@@ -184,7 +192,7 @@
               <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-emerald-400 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-blue-500/30 transform rotate-3">
                 <LayoutDashboard className="text-white w-8 h-8 -rotate-3" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-800">Media Analytics</h2>
+              <h2 className="text-2xl font-bold text-slate-800">Media Monitoring</h2>
               <p className="text-slate-500 text-sm mt-1">Pemerintah Kota Bandung</p>
             </div>
 
@@ -263,8 +271,12 @@
           const status = i.status || 'Belum Ditangani';
           if (statusCount[status] !== undefined) statusCount[status]++;
           else statusCount['Belum Ditangani']++;
-          const sector = i.leadingSector || 'Lainnya';
-          sectorCount[sector] = (sectorCount[sector] || 0) + 1;
+          
+          // Memungkinkan perhitungan lebih dari satu sektor
+          const sectors = i.leadingSectors || (i.leadingSector ? [i.leadingSector] : ['Lainnya']);
+          sectors.forEach(sector => {
+            sectorCount[sector] = (sectorCount[sector] || 0) + 1;
+          });
         });
 
         const statusData = [
@@ -413,7 +425,7 @@
                     <div className="flex justify-between items-start mb-2"><span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded border">{issue.sourceType}</span><span className="text-[10px] text-slate-400">{issue.date}</span></div>
                     <h4 className="font-bold text-slate-800 text-sm line-clamp-2">{issue.title}</h4>
                     <div className="mt-2 flex gap-2 flex-wrap">
-                       <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded-md font-bold">{issue.leadingSector}</span>
+                       <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded-md font-bold">{(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}</span>
                        <span className={`text-[10px] px-2 py-1 rounded-md font-bold ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
                        <span className={`text-[10px] px-2 py-1 rounded-md font-bold ${issue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : issue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{issue.status || 'Belum Ditangani'}</span>
                     </div>
@@ -435,7 +447,10 @@
       const filteredIssues = issues.filter(issue => {
         let matches = true;
         if (filterDate && issue.date !== filterDate) matches = false;
-        if (filterSector && issue.leadingSector !== filterSector) matches = false;
+        
+        const sectors = issue.leadingSectors || (issue.leadingSector ? [issue.leadingSector] : []);
+        if (filterSector && !sectors.includes(filterSector)) matches = false;
+        
         if (searchTerm && !issue.title.toLowerCase().includes(searchTerm.toLowerCase())) matches = false;
         return matches;
       });
@@ -480,9 +495,11 @@
                   <tr key={issue.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="p-4 text-slate-600">{issue.date}</td>
                     <td className="p-4 font-medium text-slate-800 max-w-[250px] truncate" title={issue.title}>{issue.title}</td>
-                    <td className="p-4 text-slate-600">{issue.leadingSector}</td>
+                    <td className="p-4 text-slate-600 max-w-[150px] truncate" title={(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}>
+                        {(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}
+                    </td>
                     <td className="p-4 text-center">
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
+                       <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
                     </td>
                     <td className="p-4 text-center">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${issue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : issue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{issue.status || 'Belum Ditangani'}</span>
@@ -506,7 +523,8 @@
       );
     }
 
-    function AnalysisView({ issues, role, agency, onAnalyze, isAnalyzing, onView, onPublishToggle, onEditAnalysis }) {
+    function AnalysisView({ issues, role, agency, onAnalyze, analyzingId, onView, onPublishToggle, onEditAnalysis, onDelete, onDownloadAll, onDownloadRecap }) {
+      const [filterPeriod, setFilterPeriod] = useState('all');
       const [filterDate, setFilterDate] = useState('');
       const [filterMedia, setFilterMedia] = useState('');
 
@@ -514,6 +532,21 @@
         if (role !== 'admin' && !issue.analysisPublished) return false;
         if (filterDate && issue.date !== filterDate) return false;
         if (filterMedia && issue.sourceType !== filterMedia) return false;
+        
+        // Filter berdasarkan Periode (Mingguan/Bulanan)
+        if (filterPeriod !== 'all' && issue.date) {
+            const issueDate = new Date(issue.date);
+            const now = new Date();
+            if (filterPeriod === 'today') {
+                if (issueDate.toDateString() !== now.toDateString()) return false;
+            } else if (filterPeriod === 'week') {
+                const diffTime = Math.abs(now - issueDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays > 7) return false;
+            } else if (filterPeriod === 'month') {
+                if (issueDate.getMonth() !== now.getMonth() || issueDate.getFullYear() !== now.getFullYear()) return false;
+            }
+        }
         return true;
       });
 
@@ -521,15 +554,26 @@
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
           <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b pb-6">
             <div>
-              <h2 className="text-xl font-bold text-slate-800 flex items-center"><BrainCircuit className="mr-2 text-blue-600" /> Analisis Isu</h2>
-              <p className="text-slate-500 text-sm mt-1">
-                {role === 'admin' ? 'Kelola dan generate analisis isu menggunakan AI.' : 'Daftar analisis isu yang telah dipublikasikan.'}
-              </p>
+              <h2 className="text-xl font-bold text-slate-800 flex items-center"><Brain className="mr-2 text-blue-600" /> Analisis Isu</h2>
             </div>
-            <div className="flex gap-3">
-              <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-500 mb-1">Filter Tanggal</label><input type="date" className="border px-3 py-1.5 rounded-lg text-sm outline-none" value={filterDate} onChange={(e)=>setFilterDate(e.target.value)}/></div>
+            <div className="flex flex-wrap gap-3 items-end">
+              {role === 'admin' && (
+                <div className="flex gap-2">
+                  <button onClick={() => onDownloadRecap(issuesForAnalysis)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center transition-colors h-[38px]" title="Download Rekap Statistik">
+                    <FileText size={16} className="mr-2"/> Rekap Data
+                  </button>
+                  <button onClick={() => onDownloadAll(issuesForAnalysis)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center transition-colors h-[38px]" title="Download Semua Hasil Analisis">
+                    <Download size={16} className="mr-2"/> Semua Analisis
+                  </button>
+                </div>
+              )}
+              <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-500 mb-1">Periode Waktu</label>
+                <select className="border px-3 py-1.5 rounded-lg text-sm outline-none bg-white h-[38px]" value={filterPeriod} onChange={(e)=>setFilterPeriod(e.target.value)}>
+                  <option value="all">Semua Waktu</option><option value="today">Hari Ini</option><option value="week">1 Minggu Terakhir</option><option value="month">Bulan Ini</option>
+                </select>
+              </div>
               <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-500 mb-1">Filter Media</label>
-                <select className="border px-3 py-1.5 rounded-lg text-sm outline-none bg-white" value={filterMedia} onChange={(e)=>setFilterMedia(e.target.value)}>
+                <select className="border px-3 py-1.5 rounded-lg text-sm outline-none bg-white h-[38px]" value={filterMedia} onChange={(e)=>setFilterMedia(e.target.value)}>
                   <option value="">Semua Media</option><option value="Media Sosial">Media Sosial</option><option value="Media Online">Media Online</option><option value="Media Cetak">Media Cetak</option>
                 </select>
               </div>
@@ -538,7 +582,10 @@
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {issuesForAnalysis.map(issue => {
-              const isAllowedToSeeAI = role === 'admin' || role === 'pimpinan' || (role === 'pd' && issue.leadingSector === agency);
+              const sectors = issue.leadingSectors || (issue.leadingSector ? [issue.leadingSector] : []);
+              const isAllowedToSeeAI = role === 'admin' || role === 'pimpinan' || (role === 'pd' && sectors.includes(agency));
+              const isThisAnalyzing = analyzingId === issue.id;
+              const isAnyAnalyzing = analyzingId !== null;
               
               return (
                 <div key={issue.id} className="bg-slate-50 border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow flex flex-col relative overflow-hidden">
@@ -546,11 +593,16 @@
                   {issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-700 text-[9px] font-bold px-2 py-1 rounded-bl-lg">PUBLISHED</div>}
                   
                   <div className="flex justify-between items-start mb-3 mt-2">
-                    <span className="text-[10px] font-bold px-2 py-1 bg-white border border-slate-200 rounded text-slate-600">{issue.sourceType}</span>
+                    <div className="flex gap-1.5">
+                        <span className="text-[10px] font-bold px-2 py-1 bg-white border border-slate-200 rounded text-slate-600">{issue.sourceType}</span>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
+                    </div>
                     <span className="text-[10px] text-slate-400 font-medium">{issue.date}</span>
                   </div>
                   <h3 className="font-bold text-slate-800 text-sm mb-2 line-clamp-2">{issue.title}</h3>
-                  <p className="text-xs text-blue-600 font-bold mb-4 flex-1">{issue.leadingSector}</p>
+                  <p className="text-xs text-blue-600 font-bold mb-4 flex-1 line-clamp-2" title={(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}>
+                      {(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}
+                  </p>
                   
                   <div className="mt-auto space-y-2">
                     {issue.aiAnalysis ? (
@@ -564,19 +616,36 @@
                                 <Edit2 size={14}/>
                             </button>
                           )}
+                          {role === 'admin' && (
+                            <button onClick={() => onAnalyze(issue)} disabled={isAnyAnalyzing} className="px-3 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors flex items-center justify-center" title="Analisis Ulang Isu">
+                                {isThisAnalyzing ? <Loader2 size={14} className="animate-spin"/> : <Brain size={14}/>}
+                            </button>
+                          )}
+                          {role === 'admin' && (
+                            <button onClick={() => onDelete(issue.id)} className="px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-colors flex items-center justify-center" title="Hapus Isu">
+                                <Trash2 size={14}/>
+                            </button>
+                          )}
                         </div>
                         {role === 'admin' && (
                           <button onClick={() => onPublishToggle(issue.id, issue.analysisPublished)} className={`w-full py-2 rounded-lg text-[11px] font-bold flex justify-center items-center transition-colors ${issue.analysisPublished ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
-                            {issue.analysisPublished ? 'Unpublish' : <><Send size={14} className="mr-1.5"/> Publish ke Pimpinan & PD</>}
+                            {issue.analysisPublished ? 'Unpublish' : <><Send size={14} className="mr-1.5"/> Publish</>}
                           </button>
                         )}
                       </div>
                     ) : (
-                      role === 'admin' && (
-                        <button onClick={() => onAnalyze(issue)} disabled={isAnalyzing} className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold shadow-md transition-all flex items-center justify-center">
-                          {isAnalyzing ? <Loader2 size={14} className="animate-spin mr-2"/> : <BrainCircuit size={14} className="mr-2"/>} Generate Analisis
-                        </button>
-                      )
+                      <div className="flex gap-2">
+                        {role === 'admin' && (
+                          <button onClick={() => onAnalyze(issue)} disabled={isAnyAnalyzing} className="flex-1 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold shadow-md transition-all flex items-center justify-center">
+                            {isThisAnalyzing ? <Loader2 size={14} className="animate-spin mr-2"/> : <Brain size={14} className="mr-2"/>} Analisis
+                          </button>
+                        )}
+                        {role === 'admin' && (
+                          <button onClick={() => onDelete(issue.id)} className="px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-colors flex items-center justify-center" title="Hapus Isu">
+                              <Trash2 size={14}/>
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -594,15 +663,41 @@
     }
 
     function IssueModal({ type, onClose, onSave, initialData, isUploading }) {
-      const [formData, setFormData] = useState(initialData || {
-        sourceType: type, title: '', date: new Date().toISOString().split('T')[0],
-        sentiment: 'Netral', leadingSector: LEADING_SECTORS[0],
-        platform: 'Instagram', postType: 'Post Foto/Video', account: '', link: '', caption: '',
-        domain: '', content: '', printType: 'Koran', mediaName: ''
+      const [formData, setFormData] = useState(() => {
+        const defaultData = initialData || {
+          sourceType: type, title: '', date: new Date().toISOString().split('T')[0],
+          sentiment: 'Netral', leadingSector: LEADING_SECTORS[0],
+          postType: 'Post Foto/Video', caption: '', link: '', domain: '', content: '', printType: 'Koran', mediaName: ''
+        };
+        return {
+          ...defaultData,
+          leadingSectors: defaultData.leadingSectors || (defaultData.leadingSector ? [defaultData.leadingSector] : [LEADING_SECTORS[0]]),
+          links: defaultData.links || (defaultData.link ? [defaultData.link] : ['']),
+          domains: defaultData.domains || (defaultData.domain ? [defaultData.domain] : ['']),
+          platforms: defaultData.platforms || (defaultData.platform ? [defaultData.platform] : ['Instagram']),
+          accounts: defaultData.accounts || (defaultData.account ? [defaultData.account] : [''])
+        };
       });
+
       const [file, setFile] = useState(null);
 
       const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+      
+      const handleArrayChange = (field, index, value) => {
+          const newArr = [...(formData[field] || [])];
+          newArr[index] = value;
+          setFormData({ ...formData, [field]: newArr });
+      };
+      
+      const addArrayItem = (field, defaultVal) => {
+          setFormData({ ...formData, [field]: [...(formData[field] || []), defaultVal] });
+      };
+      
+      const removeArrayItem = (field, index) => {
+          const newArr = (formData[field] || []).filter((_, i) => i !== index);
+          setFormData({ ...formData, [field]: newArr });
+      };
+
       const handleSubmit = (e) => { e.preventDefault(); onSave(formData, file); };
 
       return (
@@ -618,26 +713,119 @@
                 <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Sentimen</label><select name="sentiment" value={formData.sentiment} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white"><option value="Positif">Positif</option><option value="Netral">Netral</option><option value="Negatif">Negatif</option></select></div>
               </div>
               <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Judul Isu</label><input type="text" name="title" required value={formData.title} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
-              <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Leading Sector</label><select name="leadingSector" value={formData.leadingSector} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white">{LEADING_SECTORS.map(sec => <option key={sec} value={sec}>{sec}</option>)}</select></div>
+              
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <div className="flex justify-between items-center mb-2">
+                      <label className="text-[11px] font-bold text-slate-700">Leading Sector (Bisa Lebih Dari Satu)</label>
+                      <button type="button" onClick={() => addArrayItem('leadingSectors', LEADING_SECTORS[0])} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200 transition-colors">+ Tambah OPD</button>
+                  </div>
+                  {(formData.leadingSectors || []).map((sec, i) => (
+                      <div key={i} className="flex gap-2 mb-2">
+                          <select value={sec} onChange={(e) => handleArrayChange('leadingSectors', i, e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white">
+                              {LEADING_SECTORS.map(op => <option key={op} value={op}>{op}</option>)}
+                          </select>
+                          {(formData.leadingSectors || []).length > 1 && (
+                              <button type="button" onClick={() => removeArrayItem('leadingSectors', i)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Hapus"><X size={16}/></button>
+                          )}
+                      </div>
+                  ))}
+              </div>
+
               {type === 'Media Sosial' && (
                  <>
-                   <div className="grid grid-cols-2 gap-4">
-                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Platform</label><select name="platform" value={formData.platform} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl bg-white"><option value="Instagram">Instagram</option><option value="Twitter/X">Twitter/X</option><option value="TikTok">TikTok</option><option value="Facebook">Facebook</option></select></div>
-                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Jenis</label><select name="postType" value={formData.postType} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl bg-white"><option value="Komentar">Komentar</option><option value="DM">DM</option><option value="Post Foto/Video">Post Foto/Video</option></select></div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                           <div className="flex justify-between items-center mb-2">
+                               <label className="text-[11px] font-bold text-slate-700">Platform</label>
+                               <button type="button" onClick={() => addArrayItem('platforms', 'Instagram')} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200 transition-colors">+ Tambah</button>
+                           </div>
+                           {(formData.platforms || []).map((plat, i) => (
+                               <div key={i} className="flex gap-2 mb-2">
+                                   <select value={plat} onChange={(e) => handleArrayChange('platforms', i, e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white">
+                                       <option value="Instagram">Instagram</option>
+                                       <option value="Twitter/X">Twitter/X</option>
+                                       <option value="TikTok">TikTok</option>
+                                       <option value="Facebook">Facebook</option>
+                                       <option value="YouTube">YouTube</option>
+                                       <option value="Threads">Threads</option>
+                                   </select>
+                                   {(formData.platforms || []).length > 1 && (
+                                       <button type="button" onClick={() => removeArrayItem('platforms', i)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><X size={16}/></button>
+                                   )}
+                               </div>
+                           ))}
+                       </div>
+                       
+                       <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                           <div className="flex justify-between items-center mb-2">
+                               <label className="text-[11px] font-bold text-slate-700">Akun (Username)</label>
+                               <button type="button" onClick={() => addArrayItem('accounts', '')} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200 transition-colors">+ Tambah</button>
+                           </div>
+                           {(formData.accounts || []).map((acc, i) => (
+                               <div key={i} className="flex gap-2 mb-2">
+                                   <input type="text" value={acc} onChange={(e) => handleArrayChange('accounts', i, e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" placeholder="@username" />
+                                   {(formData.accounts || []).length > 1 && (
+                                       <button type="button" onClick={() => removeArrayItem('accounts', i)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><X size={16}/></button>
+                                   )}
+                               </div>
+                           ))}
+                       </div>
                    </div>
-                   <div className="grid grid-cols-2 gap-4">
-                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Akun</label><input type="text" name="account" value={formData.account} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
-                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Link URL</label><input type="url" name="link" value={formData.link} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
+
+                   <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Jenis Interaksi</label><select name="postType" value={formData.postType} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl bg-white"><option value="Komentar">Komentar</option><option value="DM">DM</option><option value="Post Foto/Video">Post Foto/Video</option><option value="Ulasan">Ulasan</option></select></div>
+                   
+                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <div className="flex justify-between items-center mb-2">
+                          <label className="text-[11px] font-bold text-slate-700">Link URL</label>
+                          <button type="button" onClick={() => addArrayItem('links', '')} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200 transition-colors">+ Tambah Link</button>
+                      </div>
+                      {(formData.links || []).map((link, i) => (
+                          <div key={i} className="flex gap-2 mb-2">
+                              <input type="url" value={link} onChange={(e) => handleArrayChange('links', i, e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" placeholder="https://..." />
+                              {(formData.links || []).length > 1 && (
+                                  <button type="button" onClick={() => removeArrayItem('links', i)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"><X size={16}/></button>
+                              )}
+                          </div>
+                      ))}
                    </div>
+                   
                    <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Isi/Caption</label><textarea name="caption" rows="3" value={formData.caption} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none"></textarea></div>
                  </>
               )}
               {type === 'Media Online' && (
                  <>
-                   <div className="grid grid-cols-2 gap-4">
-                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Domain</label><input type="text" name="domain" value={formData.domain} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
-                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Link Berita</label><input type="url" name="link" value={formData.link} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                          <div className="flex justify-between items-center mb-2">
+                              <label className="text-[11px] font-bold text-slate-700">Domain Berita</label>
+                              <button type="button" onClick={() => addArrayItem('domains', '')} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200">+ Tambah Domain</button>
+                          </div>
+                          {(formData.domains || []).map((domain, i) => (
+                              <div key={i} className="flex gap-2 mb-2">
+                                  <input type="text" value={domain} onChange={(e) => handleArrayChange('domains', i, e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" placeholder="contoh.com" />
+                                  {(formData.domains || []).length > 1 && (
+                                      <button type="button" onClick={() => removeArrayItem('domains', i)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><X size={16}/></button>
+                                  )}
+                              </div>
+                          ))}
+                       </div>
+                       
+                       <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                          <div className="flex justify-between items-center mb-2">
+                              <label className="text-[11px] font-bold text-slate-700">Link Berita</label>
+                              <button type="button" onClick={() => addArrayItem('links', '')} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200">+ Tambah Link</button>
+                          </div>
+                          {(formData.links || []).map((link, i) => (
+                              <div key={i} className="flex gap-2 mb-2">
+                                  <input type="url" value={link} onChange={(e) => handleArrayChange('links', i, e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" placeholder="https://..." />
+                                  {(formData.links || []).length > 1 && (
+                                      <button type="button" onClick={() => removeArrayItem('links', i)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><X size={16}/></button>
+                                  )}
+                              </div>
+                          ))}
+                       </div>
                    </div>
+                   
                    <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Isi Berita</label><textarea name="content" rows="4" value={formData.content} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none"></textarea></div>
                  </>
               )}
@@ -647,6 +835,22 @@
                      <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Jenis Media</label><select name="printType" value={formData.printType} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl bg-white"><option value="Koran">Koran</option><option value="Majalah">Majalah</option><option value="Tabloid">Tabloid</option></select></div>
                      <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Nama Media</label><input type="text" name="mediaName" value={formData.mediaName} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
                    </div>
+                   
+                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <div className="flex justify-between items-center mb-2">
+                          <label className="text-[11px] font-bold text-slate-700">Link Digital (Opsional)</label>
+                          <button type="button" onClick={() => addArrayItem('links', '')} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200">+ Tambah Link</button>
+                      </div>
+                      {(formData.links || []).map((link, i) => (
+                          <div key={i} className="flex gap-2 mb-2">
+                              <input type="url" value={link} onChange={(e) => handleArrayChange('links', i, e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" placeholder="https://..." />
+                              {(formData.links || []).length > 1 && (
+                                  <button type="button" onClick={() => removeArrayItem('links', i)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><X size={16}/></button>
+                              )}
+                          </div>
+                      ))}
+                   </div>
+
                    <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Isi Berita</label><textarea name="content" rows="4" value={formData.content} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none"></textarea></div>
                  </>
               )}
@@ -716,7 +920,7 @@
       const [isLoading, setIsLoading] = useState(true);
       const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
       const [isUploading, setIsUploading] = useState(false);
-      const [isAnalyzing, setIsAnalyzing] = useState(false);
+      const [analyzingId, setAnalyzingId] = useState(null);
 
       const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
       const [editingIssue, setEditingIssue] = useState(null);
@@ -733,8 +937,12 @@
         const unsub = onAuthStateChanged(auth, async (currentUser) => {
           if (currentUser) {
             setUser(currentUser);
-            const docSnap = await getDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'info'));
-            if (docSnap.exists()) { setUserRole(docSnap.data().role || 'pd'); setUserProfile(docSnap.data()); }
+            try {
+              const docSnap = await getDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'info'));
+              if (docSnap.exists()) { setUserRole(docSnap.data().role || 'pd'); setUserProfile(docSnap.data()); }
+            } catch (error) {
+              console.error("Gagal mengambil profil:", error);
+            }
           } else { setUser(null); setUserRole('pd'); setUserProfile(null); }
           setIsLoading(false);
         });
@@ -803,29 +1011,311 @@
 
       const handleAnalyzeAI = async (issue) => {
         if (userRole !== 'admin') return;
-        setIsAnalyzing(true); showToast("AI menganalisis...", "info");
+        
+        if (!OPENAI_API_KEY || OPENAI_API_KEY.includes("MASUKKAN")) {
+            showToast("OpenAI API Key belum diatur di kode.", "error");
+            return;
+        }
+
+        setAnalyzingId(issue.id); showToast("AI menganalisis...", "info");
+        
         try {
-          const prompt = `Sebagai analis kebijakan ahli Pemerintah Kota Bandung era Muhammad Farhan, analisislah isu: Judul: ${issue.title}. Detail: ${issue.content || issue.caption || 'Tidak ada detail'}. Sektor: ${issue.leadingSector}. 
+          const sectorsStr = (issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ');
+          const prompt = `Sebagai analis kebijakan ahli Pemerintah Kota Bandung era Muhammad Farhan, analisislah isu: Judul: ${issue.title}. Detail: ${issue.content || issue.caption || 'Tidak ada detail'}. Sektor: ${sectorsStr}. 
           Tugas:
           1. Buat 'analysis' mendalam.
           2. Buat 'policyRecommendation' dengan memberikan rekomendasi sebanyak mungkin yang relevan dengan visi misi program Pemkot Bandung era Muhammad Farhan. Pisahkan setiap rekomendasi dengan nomor ke bawah, dan SETIAP REKOMENDASI WAJIB diawali dengan kata kerja "Me...".
           3. Buat 'publicationRecommendation' (sama, bernomor ke bawah, wajib diawali "Me...").
-          Format JSON: {"analysis": "...", "policyRecommendation": "1. Me...\\n2. Me...", "publicationRecommendation": "1. Me...\\n2. Me..."}`;
+          Format keluaran HARUS berupa JSON murni dengan struktur: {"analysis": "...", "policyRecommendation": "1. Me...\\n2. Me...", "publicationRecommendation": "1. Me...\\n2. Me..."}`;
           
-          let aiResult = {
-            analysis: `Berdasarkan analisis awal, isu "${issue.title}" berdampak pada efektivitas pelayanan Pemkot Bandung.`,
-            policyRecommendation: "1. Menginstruksikan tim terkait untuk melakukan investigasi lapangan.\n2. Mengevaluasi standar pelayanan operasional (SOP).",
-            publicationRecommendation: "1. Mempublikasikan klarifikasi resmi.\n2. Mengadakan konferensi pers."
-          };
+          let aiResult = null;
           
-          if (GOOGLE_SCRIPT_URL && !GOOGLE_SCRIPT_URL.includes("MASUKKAN")) {
-            const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'analyzeIssue', prompt }) });
-            const result = await res.json();
-            if (result.status === 'success') aiResult = JSON.parse(result.data);
+          try {
+              const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                     'Authorization': `Bearer ${OPENAI_API_KEY}`
+                 },
+                 body: JSON.stringify({
+                     model: 'gpt-4o-mini',
+                     messages: [
+                         { role: 'system', content: 'You are a helpful policy analyst assistant. Always respond with raw valid JSON.' },
+                         { role: 'user', content: prompt }
+                     ],
+                     response_format: { type: "json_object" }
+                 })
+              });
+
+              const textRes = await res.text();
+              let resultData;
+              try {
+                  resultData = JSON.parse(textRes);
+              } catch (e) {
+                  throw new Error("OpenAI mengembalikan format yang tidak valid atau kosong.");
+              }
+
+              if (resultData.error) throw new Error(resultData.error.message);
+              
+              const contentText = resultData.choices[0].message.content || "{}";
+              aiResult = JSON.parse(contentText);
+          } catch (openaiError) {
+              const errMsg = openaiError?.message?.toLowerCase() || "";
+              const isQuotaError = errMsg.includes("quota") || errMsg.includes("exceeded") || errMsg.includes("billing") || errMsg.includes("429");
+              
+              if (!isQuotaError) console.error("OpenAI Error:", openaiError);
+              
+              if (isQuotaError) {
+                  showToast("Kuota OpenAI habis. Menggunakan AI Cadangan gratis...", "info");
+                  const apiKey = ""; 
+                  const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                          contents: [{ parts: [{ text: prompt }] }],
+                          generationConfig: {
+                              responseMimeType: "application/json",
+                              responseSchema: {
+                                  type: "OBJECT",
+                                  properties: {
+                                      analysis: { type: "STRING" },
+                                      policyRecommendation: { type: "STRING" },
+                                      publicationRecommendation: { type: "STRING" }
+                                  },
+                                  required: ["analysis", "policyRecommendation", "publicationRecommendation"]
+                              }
+                          }
+                      })
+                  });
+                  
+                  const geminiTextRes = await geminiRes.text();
+                  let geminiData;
+                  try { geminiData = JSON.parse(geminiTextRes); } catch (e) { throw new Error("API Gemini mengembalikan respons kosong."); }
+                  if (geminiData.error) throw new Error(geminiData.error.message);
+                  
+                  let geminiOutput = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+                  geminiOutput = geminiOutput.replace(/```json/g, '').replace(/```/g, '').trim();
+                  
+                  try { aiResult = JSON.parse(geminiOutput); } catch (parseError) { throw new Error("Gagal membaca hasil analisis."); }
+              } else { throw openaiError; }
           }
-          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', issue.id), { aiAnalysis: aiResult, analyzedAt: new Date().toISOString() });
-          showToast("Selesai", "success");
-        } catch (e) { showToast("Gagal analisis", "error"); } finally { setIsAnalyzing(false); }
+
+          if (aiResult) {
+              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', issue.id), { aiAnalysis: aiResult, analyzedAt: new Date().toISOString() });
+              showToast("Selesai dianalisis", "success");
+          }
+          
+        } catch (e) { 
+            console.error(e);
+            let errMsg = "Gagal analisis (Cek Console/API Key)";
+            if (e.message.toLowerCase().includes("quota") || e.message.toLowerCase().includes("exceeded")) errMsg = "API Key kehabisan kuota limit.";
+            if (e.message.includes("kosong") || e.message.includes("valid")) errMsg = e.message;
+            showToast(errMsg, "error"); 
+        } finally { setAnalyzingId(null); }
+      };
+
+      // Fungsi Download Laporan (PDF)
+      const handleDownloadPDF = (issue) => {
+          if (!window.html2pdf) {
+              showToast("Library PDF belum termuat, silakan coba beberapa saat lagi.", "error");
+              return;
+          }
+          const content = document.createElement('div');
+          content.innerHTML = `
+              <div style="padding: 30px; font-family: 'Inter', sans-serif; color: #333;">
+                  <h2 style="color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Laporan Analisis Isu</h2>
+                  <table style="width: 100%; margin-bottom: 20px; font-size: 14px;">
+                      <tr><td style="width: 130px; font-weight: bold;">Judul</td><td>: ${issue.title}</td></tr>
+                      <tr><td style="font-weight: bold;">Tanggal</td><td>: ${issue.date}</td></tr>
+                      <tr><td style="font-weight: bold;">Media / Platform</td><td>: ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}</td></tr>
+                      <tr><td style="font-weight: bold;">Akun / Domain</td><td>: ${(issue.domains || []).concat(issue.accounts || []).filter(Boolean).join(', ') || '-'}</td></tr>
+                      <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                      <tr><td style="font-weight: bold;">Leading Sector</td><td>: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  </table>
+                  <h3 style="color: #0f172a; margin-top: 20px;">Analisis</h3>
+                  <p style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">${issue.aiAnalysis?.analysis}</p>
+                  <h3 style="color: #0f172a; margin-top: 20px;">Rekomendasi Kebijakan</h3>
+                  <p style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">${issue.aiAnalysis?.policyRecommendation}</p>
+                  <h3 style="color: #0f172a; margin-top: 20px;">Rekomendasi Publikasi</h3>
+                  <p style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">${issue.aiAnalysis?.publicationRecommendation}</p>
+              </div>
+          `;
+          window.html2pdf().from(content).set({
+              margin: 10,
+              filename: `Analisis_${issue.title.substring(0, 20)}.pdf`,
+              html2canvas: { scale: 2 },
+              jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          }).save();
+      };
+
+      // Fungsi Download Laporan (Ms. Word)
+      const handleDownloadWord = (issue) => {
+          const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML to Word</title></head><body>";
+          const footer = "</body></html>";
+          const content = `
+              <h2 style="color: #1e293b;">Laporan Analisis Isu</h2>
+              <table style="width: 100%; margin-bottom: 20px; font-size: 14px;">
+                  <tr><td style="width: 130px; font-weight: bold;">Judul</td><td>: ${issue.title}</td></tr>
+                  <tr><td style="font-weight: bold;">Tanggal</td><td>: ${issue.date}</td></tr>
+                  <tr><td style="font-weight: bold;">Media / Platform</td><td>: ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}</td></tr>
+                  <tr><td style="font-weight: bold;">Akun / Domain</td><td>: ${(issue.domains || []).concat(issue.accounts || []).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Leading Sector</td><td>: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
+              </table>
+              <br/>
+              <h3>Analisis</h3>
+              <p>${(issue.aiAnalysis?.analysis || '').replace(/\n/g, '<br>')}</p>
+              <h3>Rekomendasi Kebijakan</h3>
+              <p>${(issue.aiAnalysis?.policyRecommendation || '').replace(/\n/g, '<br>')}</p>
+              <h3>Rekomendasi Publikasi</h3>
+              <p>${(issue.aiAnalysis?.publicationRecommendation || '').replace(/\n/g, '<br>')}</p>
+          `;
+          const html = header + content + footer;
+          const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `Analisis_${issue.title.substring(0,20)}.doc`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+      };
+
+      // Fungsi Download Semua Laporan Analisis (Ms. Word Gabungan)
+      const handleDownloadAllWord = (issuesToDownload) => {
+          const analyzedIssues = issuesToDownload.filter(i => i.aiAnalysis);
+          
+          if (analyzedIssues.length === 0) {
+              showToast("Tidak ada isu yang sudah dianalisis untuk didownload.", "error");
+              return;
+          }
+
+          const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Rekap Analisis Isu</title></head><body>";
+          const footer = "</body></html>";
+          
+          let content = `<h1 style="text-align: center; color: #1e293b;">Rekapitulasi Laporan Analisis Isu</h1><br/>`;
+
+          analyzedIssues.forEach((issue, index) => {
+              content += `
+              <h2 style="color: #1e293b;">${index + 1}. ${issue.title}</h2>
+              <table style="width: 100%; margin-bottom: 20px; font-size: 14px;">
+                  <tr><td style="width: 130px; font-weight: bold;">Tanggal</td><td>: ${issue.date}</td></tr>
+                  <tr><td style="font-weight: bold;">Media / Platform</td><td>: ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}</td></tr>
+                  <tr><td style="font-weight: bold;">Akun / Domain</td><td>: ${(issue.domains || []).concat(issue.accounts || []).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Leading Sector</td><td>: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
+              </table>
+              <br/>
+              <h3>Analisis</h3>
+              <p>${(issue.aiAnalysis?.analysis || '').replace(/\n/g, '<br>')}</p>
+              <h3>Rekomendasi Kebijakan</h3>
+              <p>${(issue.aiAnalysis?.policyRecommendation || '').replace(/\n/g, '<br>')}</p>
+              <h3 style="font-family: sans-serif;">Rekomendasi Publikasi</h3>
+              <p style="font-family: sans-serif;">${(issue.aiAnalysis?.publicationRecommendation || '').replace(/\n/g, '<br>')}</p>
+              <hr style="margin: 40px 0; border: 1px solid #cbd5e1;" />
+              `;
+          });
+
+          const html = header + content + footer;
+          const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'Semua_Laporan_Analisis_Isu.doc';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+      };
+
+      // Fungsi Download Rekapitulasi Analisis Statistik (Ms. Word)
+      const handleDownloadRecapWord = (filteredIssues) => {
+          if (filteredIssues.length === 0) {
+              showToast("Tidak ada data untuk direkap.", "error");
+              return;
+          }
+
+          let pos = 0, neg = 0, net = 0;
+          let soc = 0, onl = 0, prt = 0;
+          let statusCount = { 'Belum Ditangani': 0, 'Dalam Proses': 0, 'Selesai': 0 };
+          let sectors = {};
+
+          filteredIssues.forEach(i => {
+              if(i.sentiment === 'Positif') pos++;
+              else if(i.sentiment === 'Negatif') neg++;
+              else net++;
+
+              if(i.sourceType === 'Media Sosial') soc++;
+              else if(i.sourceType === 'Media Online') onl++;
+              else prt++;
+
+              let st = i.status || 'Belum Ditangani';
+              if(statusCount[st] !== undefined) statusCount[st]++;
+              else statusCount['Belum Ditangani']++;
+
+              const secs = i.leadingSectors || (i.leadingSector ? [i.leadingSector] : ['Lainnya']);
+              secs.forEach(s => { sectors[s] = (sectors[s] || 0) + 1; });
+          });
+
+          const topSectors = Object.keys(sectors).map(k => ({name: k, count: sectors[k]})).sort((a,b) => b.count - a.count).slice(0, 5);
+
+          const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Rekapitulasi Data Monitoring Isu</title></head><body>";
+          const footer = "</body></html>";
+
+          let content = `
+              <h1 style="text-align: center; color: #1e293b; font-family: sans-serif;">Rekapitulasi Data Monitoring Isu</h1>
+              <p style="text-align: center; font-family: sans-serif;">Total Isu Ditampilkan: <strong>${filteredIssues.length}</strong></p>
+              <br/>
+              <h3 style="font-family: sans-serif;">1. Ringkasan Sentimen & Media</h3>
+              <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 14px;">
+                  <tr style="background-color: #f1f5f9;">
+                      <th>Sentimen</th><th>Jumlah</th>
+                      <th>Kategori Media</th><th>Jumlah</th>
+                  </tr>
+                  <tr><td>Positif</td><td align="center">${pos}</td><td>Media Sosial</td><td align="center">${soc}</td></tr>
+                  <tr><td>Netral</td><td align="center">${net}</td><td>Media Online</td><td align="center">${onl}</td></tr>
+                  <tr><td>Negatif</td><td align="center">${neg}</td><td>Media Cetak</td><td align="center">${prt}</td></tr>
+              </table>
+              <br/>
+              <h3 style="font-family: sans-serif;">2. Status Penanganan</h3>
+              <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 14px;">
+                  <tr style="background-color: #f1f5f9;"><th>Status</th><th>Jumlah</th></tr>
+                  <tr><td>Belum Ditangani</td><td align="center">${statusCount['Belum Ditangani']}</td></tr>
+                  <tr><td>Dalam Proses</td><td align="center">${statusCount['Dalam Proses']}</td></tr>
+                  <tr><td>Selesai</td><td align="center">${statusCount['Selesai']}</td></tr>
+              </table>
+              <br/>
+              <h3 style="font-family: sans-serif;">3. Top Perangkat Daerah (Leading Sector)</h3>
+              <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 14px;">
+                  <tr style="background-color: #f1f5f9;"><th>Perangkat Daerah</th><th>Jumlah Isu</th></tr>
+                  ${topSectors.map(s => `<tr><td>${s.name}</td><td align="center">${s.count}</td></tr>`).join('')}
+              </table>
+              <br/>
+              <h3 style="font-family: sans-serif;">4. Daftar Isu Lengkap</h3>
+              <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 14px;">
+                  <tr style="background-color: #f1f5f9;">
+                      <th>No</th><th>Tanggal</th><th>Judul Isu</th><th>Sentimen</th><th>Media</th>
+                  </tr>
+                  ${filteredIssues.map((issue, idx) => `
+                      <tr>
+                          <td align="center">${idx + 1}</td>
+                          <td>${issue.date}</td>
+                          <td>${issue.title}</td>
+                          <td align="center">${issue.sentiment}</td>
+                          <td align="center">${issue.sourceType}</td>
+                      </tr>
+                  `).join('')}
+              </table>
+          `;
+
+          const html = header + content + footer;
+          const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'Rekapitulasi_Data_Isu.doc';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
       };
 
       if (!isFirebaseConfigured) return <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4"><div className="bg-white p-8 rounded-2xl shadow-lg"><h2 className="font-bold text-xl">Konfigurasi Firebase Diperlukan</h2></div></div>;
@@ -837,7 +1327,7 @@
         { id: 'social', label: 'Media Sosial', icon: Share2 },
         { id: 'online', label: 'Media Online', icon: Globe },
         { id: 'print', label: 'Media Cetak', icon: Newspaper },
-        { id: 'analysis', label: 'Analisis Isu', icon: BrainCircuit },
+        { id: 'analysis', label: 'Analisis Isu', icon: Brain },
       ];
 
       return (
@@ -845,7 +1335,15 @@
           {toast.show && (<div className={`fixed top-4 right-4 z-[9999] px-5 py-2.5 text-sm rounded-xl shadow-2xl flex items-center animate-bounce ${toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'} text-white`}><span className="font-medium">{toast.message}</span></div>)}
           
           <aside className={`bg-slate-900 text-slate-300 w-56 flex-shrink-0 flex flex-col transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full fixed h-full z-40'}`}>
-            <div className="p-5 bg-slate-950 flex items-center justify-between"><div className="flex items-center gap-3"><Activity className="text-blue-500" size={20}/><span className="text-white font-bold text-base">Prokopim BDG</span></div></div>
+            <div className="p-5 bg-slate-950 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Activity className="text-blue-500" size={20}/>
+                <div className="flex flex-col">
+                  <span className="text-white font-bold text-sm">Media Monitoring</span>
+                  <span className="text-slate-400 text-[9px] leading-tight mt-0.5">Pemerintah Kota Bandung</span>
+                </div>
+              </div>
+            </div>
             <nav className="flex-1 py-4 px-3 space-y-1">
               {navItems.map(item => (<button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${activeTab === item.id ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800'}`}><item.icon size={18} /><span className="font-bold text-xs">{item.label}</span></button>))}
             </nav>
@@ -859,7 +1357,7 @@
               {activeTab === 'social' && <DataTableView title="Media Sosial" type="Media Sosial" issues={issues.filter(i=>i.sourceType==='Media Sosial')} onAdd={()=>setIsIssueModalOpen('Media Sosial')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Sosial');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
               {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
               {activeTab === 'print' && <DataTableView title="Media Cetak" type="Media Cetak" issues={issues.filter(i=>i.sourceType==='Media Cetak')} onAdd={()=>setIsIssueModalOpen('Media Cetak')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Cetak');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
-              {activeTab === 'analysis' && <AnalysisView issues={issues} role={userRole} agency={userProfile?.agency} onAnalyze={handleAnalyzeAI} isAnalyzing={isAnalyzing} onView={setViewingIssue} onPublishToggle={togglePublishAnalysis} onEditAnalysis={setEditingAnalysisIssue}/>}
+              {activeTab === 'analysis' && <AnalysisView issues={issues} role={userRole} agency={userProfile?.agency} onAnalyze={handleAnalyzeAI} analyzingId={analyzingId} onView={setViewingIssue} onPublishToggle={togglePublishAnalysis} onEditAnalysis={setEditingAnalysisIssue} onDelete={deleteIssue} onDownloadAll={handleDownloadAllWord} onDownloadRecap={handleDownloadRecapWord} />}
             </div></div>
             
             {isIssueModalOpen && <IssueModal type={isIssueModalOpen} onClose={() => {setIsIssueModalOpen(false); setEditingIssue(null);}} onSave={saveIssue} initialData={editingIssue} isUploading={isUploading}/>}
@@ -873,30 +1371,105 @@
                   <h2 className="text-xl font-bold mb-4 pr-10">{viewingIssue.title}</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><p className="font-bold text-slate-500 mb-1 text-[11px]">Isi/Konten</p><p className="text-sm">{viewingIssue.content || viewingIssue.caption || '-'}</p></div>
-                      {viewingIssue.attachmentUrl && <a href={viewingIssue.attachmentUrl} target="_blank" className="inline-flex bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-bold text-xs"><Eye size={14} className="mr-1.5"/> Lihat Lampiran Isu</a>}
+                      
+                      <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 shadow-sm">
+                          <p className="font-bold text-blue-800 mb-3 text-xs flex items-center"><Share2 size={14} className="mr-1.5"/> Informasi Sumber & Sektor</p>
+                          <div className="space-y-3 text-sm text-slate-700">
+                             <p><strong>Media:</strong> {viewingIssue.sourceType} {viewingIssue.mediaName ? `(${viewingIssue.mediaName})` : ''}</p>
+                             
+                             {viewingIssue.platforms && viewingIssue.platforms.filter(Boolean).length > 0 && (
+                                <p><strong>Platform:</strong> {viewingIssue.platforms.filter(Boolean).join(', ')}</p>
+                             )}
+                             {viewingIssue.accounts && viewingIssue.accounts.filter(Boolean).length > 0 && (
+                                <p><strong>Akun:</strong> {viewingIssue.accounts.filter(Boolean).join(', ')}</p>
+                             )}
+                             
+                             {/* Tampilan mundur/fallback untuk data lama yang belum bertipe array */}
+                             {!viewingIssue.platforms && viewingIssue.platform && <p><strong>Platform:</strong> {viewingIssue.platform}</p>}
+                             {!viewingIssue.accounts && viewingIssue.account && <p><strong>Akun:</strong> {viewingIssue.account}</p>}
+                             
+                             {viewingIssue.domains && viewingIssue.domains.filter(Boolean).length > 0 && (
+                                <p><strong>Domain:</strong> {viewingIssue.domains.filter(Boolean).join(', ')}</p>
+                             )}
+                             
+                             {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).length > 0 && (
+                                <div>
+                                    <strong>Tautan/Link:</strong>
+                                    <ul className="list-disc pl-5 mt-1 text-xs">
+                                        {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).map((l, i) => (
+                                            <li key={i}><a href={l} target="_blank" className="text-blue-600 hover:underline break-all">{l}</a></li>
+                                        ))}
+                                    </ul>
+                                </div>
+                             )}
+
+                             <div>
+                                 <strong>Leading Sector:</strong>
+                                 <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                    {(viewingIssue.leadingSectors || [viewingIssue.leadingSector]).filter(Boolean).map((s, i) => (
+                                        <span key={i} className="text-[10px] bg-white border border-blue-200 text-blue-700 px-2 py-1 rounded font-bold shadow-sm">{s}</span>
+                                    ))}
+                                 </div>
+                             </div>
+                             
+                             {viewingIssue.attachmentUrl && (
+                                <div className="mt-2 pt-3 border-t border-blue-200">
+                                    <a href={viewingIssue.attachmentUrl} target="_blank" className="inline-flex bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-sm"><ImageIcon size={14} className="mr-1.5"/> Lihat Lampiran Isu</a>
+                                </div>
+                             )}
+                          </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><p className="font-bold text-slate-500 mb-1 text-[11px]">Isi/Konten</p><p className="text-sm whitespace-pre-wrap">{viewingIssue.content || viewingIssue.caption || '-'}</p></div>
+                      
                       <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                         <p className="font-bold text-slate-500 mb-2 text-[11px]">Status Penanganan</p><p className="text-sm font-bold">Status: {viewingIssue.status}</p>
-                        {viewingIssue.handlingNotes && <p className="text-sm border-t pt-2 mt-2">{viewingIssue.handlingNotes}</p>}
+                        {viewingIssue.handlingNotes && <p className="text-sm border-t pt-2 mt-2 whitespace-pre-wrap">{viewingIssue.handlingNotes}</p>}
                         {viewingIssue.handlingAttachmentUrl && <a href={viewingIssue.handlingAttachmentUrl} target="_blank" className="inline-flex mt-3 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg font-bold text-[11px]"><ImageIcon size={14} className="mr-1"/> Bukti Penanganan</a>}
-                        {(userRole === 'admin' || (userRole === 'pd' && userProfile?.agency === viewingIssue.leadingSector)) && (<button onClick={() => {setHandlingIssue(viewingIssue); setViewingIssue(null);}} className="w-full mt-4 bg-emerald-600 text-white py-2 rounded-lg font-bold text-[11px] flex items-center justify-center"><Edit2 size={14} className="mr-2"/> Update Penanganan</button>)}
+                        {(() => {
+                           const sectors = viewingIssue.leadingSectors || [viewingIssue.leadingSector];
+                           if (userRole === 'admin' || (userRole === 'pd' && sectors.includes(userProfile?.agency))) {
+                               return <button onClick={() => {setHandlingIssue(viewingIssue); setViewingIssue(null);}} className="w-full mt-4 bg-emerald-600 text-white py-2 rounded-lg font-bold text-[11px] flex items-center justify-center shadow hover:bg-emerald-700"><Edit2 size={14} className="mr-2"/> Update Penanganan</button>;
+                           }
+                           return null;
+                        })()}
                       </div>
                     </div>
                     <div>
-                      {viewingIssue.aiAnalysis && (userRole === 'admin' || userRole === 'pimpinan' || (userRole === 'pd' && userProfile?.agency === viewingIssue.leadingSector)) ? (
-                        <div className="bg-blue-50 p-5 rounded-xl border border-blue-100">
-                          <h4 className="font-bold text-blue-900 mb-4 flex items-center"><BrainCircuit className="mr-2" size={18}/> Analisis AI</h4>
-                          <p className="text-[11px] text-slate-700 font-bold mb-1">Analisis:</p><p className="text-sm whitespace-pre-wrap mb-4">{viewingIssue.aiAnalysis.analysis}</p>
-                          <p className="text-[11px] text-slate-700 font-bold mb-1">Rekomendasi Kebijakan:</p><p className="text-sm whitespace-pre-wrap mb-4">{viewingIssue.aiAnalysis.policyRecommendation}</p>
-                          <p className="text-[11px] text-slate-700 font-bold mb-1">Rekomendasi Publikasi:</p><p className="text-sm whitespace-pre-wrap">{viewingIssue.aiAnalysis.publicationRecommendation}</p>
-                        </div>
-                      ) : viewingIssue.aiAnalysis ? (
-                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center flex flex-col items-center justify-center h-full text-slate-500">
-                           <Lock size={24} className="mb-2"/>
-                           <p className="font-bold mb-1">Akses Terbatas</p>
-                           <p className="text-xs">Anda hanya diizinkan melihat detail judul dan laporan penanganan. Laporan Analisis mendalam isu ini hanya dapat diakses oleh Pimpinan dan Perangkat Daerah yang menjadi Leading Sector.</p>
-                        </div>
-                      ) : (<div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-slate-500 text-sm">Isu ini belum dianalisis.</div>)}
+                      {(() => {
+                         const sectors = viewingIssue.leadingSectors || [viewingIssue.leadingSector];
+                         const isAllowedToSeeAI = userRole === 'admin' || userRole === 'pimpinan' || (userRole === 'pd' && sectors.includes(userProfile?.agency));
+                         
+                         if (viewingIssue.aiAnalysis && isAllowedToSeeAI) {
+                             return (
+                                <div className="bg-amber-50 p-5 rounded-xl border border-amber-200 shadow-sm h-full flex flex-col">
+                                  <div className="flex items-center justify-between mb-4 border-b border-amber-200 pb-2">
+                                      <h4 className="font-bold text-amber-900 flex items-center"><Brain className="mr-2 text-amber-600" size={18}/> Hasil Analisis & Rekomendasi</h4>
+                                      <div className="flex gap-1.5">
+                                          <button onClick={() => handleDownloadWord(viewingIssue)} className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded font-bold transition-colors shadow-sm">DOCX</button>
+                                          <button onClick={() => handleDownloadPDF(viewingIssue)} className="text-[10px] bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded font-bold transition-colors shadow-sm">PDF</button>
+                                      </div>
+                                  </div>
+                                  
+                                  <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
+                                      <div><p className="text-[11px] text-amber-800/70 uppercase tracking-wider font-bold mb-1">Analisis:</p><p className="text-sm text-slate-800 whitespace-pre-wrap">{viewingIssue.aiAnalysis.analysis}</p></div>
+                                      <div><p className="text-[11px] text-amber-800/70 uppercase tracking-wider font-bold mb-1">Rekomendasi Kebijakan:</p><p className="text-sm text-slate-800 whitespace-pre-wrap">{viewingIssue.aiAnalysis.policyRecommendation}</p></div>
+                                      <div><p className="text-[11px] text-amber-800/70 uppercase tracking-wider font-bold mb-1">Rekomendasi Publikasi:</p><p className="text-sm text-slate-800 whitespace-pre-wrap">{viewingIssue.aiAnalysis.publicationRecommendation}</p></div>
+                                  </div>
+                                </div>
+                             );
+                         } else if (viewingIssue.aiAnalysis) {
+                             return (
+                                <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center flex flex-col items-center justify-center h-full text-slate-500">
+                                   <Lock size={24} className="mb-2"/>
+                                   <p className="font-bold mb-1">Akses Terbatas</p>
+                                   <p className="text-xs">Anda hanya diizinkan melihat detail judul dan laporan penanganan. Laporan Analisis mendalam isu ini hanya dapat diakses oleh Pimpinan dan Perangkat Daerah yang menjadi Leading Sector.</p>
+                                </div>
+                             );
+                         } else {
+                             return <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-slate-500 text-sm h-full flex items-center justify-center">Isu ini belum dianalisis.</div>;
+                         }
+                      })()}
                     </div>
                   </div>
                 </div>
