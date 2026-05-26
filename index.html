@@ -235,9 +235,8 @@
                     </div>
                  )}
 
-                 {isLogin && (<div className="flex justify-end"><button type="button" onClick={() => setIsForgotPassword(true)} className="text-sm font-medium text-blue-600 hover:underline">Lupa Password?</button></div>)}
-
-                 <button type="submit" disabled={loading} className="w-full py-3.5 mt-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg flex justify-center">{loading ? <Loader2 className="animate-spin" /> : (isLogin ? 'Login' : 'Registrasi')}</button>
+                 {isLogin && (<div className="text-right"><button type="button" onClick={() => setIsForgotPassword(true)} className="text-xs text-blue-600 font-bold hover:underline">Lupa Password?</button></div>)}
+                 <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex justify-center shadow-lg">{loading ? <Loader2 className="animate-spin" /> : (isLogin ? 'Login' : 'Registrasi')}</button>
                </form>
             )}
 
@@ -273,6 +272,7 @@
           if (statusCount[status] !== undefined) statusCount[status]++;
           else statusCount['Belum Ditangani']++;
           
+          // Memungkinkan perhitungan lebih dari satu sektor
           const sectors = i.leadingSectors || (i.leadingSector ? [i.leadingSector] : ['Lainnya']);
           sectors.forEach(sector => {
             sectorCount[sector] = (sectorCount[sector] || 0) + 1;
@@ -525,12 +525,15 @@
 
     function AnalysisView({ issues, role, agency, onAnalyze, analyzingId, onView, onPublishToggle, onEditAnalysis, onDelete, onDownloadAll, onDownloadRecap }) {
       const [filterPeriod, setFilterPeriod] = useState('all');
+      const [filterDate, setFilterDate] = useState('');
       const [filterMedia, setFilterMedia] = useState('');
 
       const issuesForAnalysis = issues.filter(issue => {
-        if (role !== 'admin' && role !== 'pimpinan' && !issue.analysisPublished) return false;
+        if (role !== 'admin' && !issue.analysisPublished) return false;
+        if (filterDate && issue.date !== filterDate) return false;
         if (filterMedia && issue.sourceType !== filterMedia) return false;
         
+        // Filter berdasarkan Periode (Mingguan/Bulanan)
         if (filterPeriod !== 'all' && issue.date) {
             const issueDate = new Date(issue.date);
             const now = new Date();
@@ -544,39 +547,32 @@
                 if (issueDate.getMonth() !== now.getMonth() || issueDate.getFullYear() !== now.getFullYear()) return false;
             }
         }
-
-        if (role === 'admin' || role === 'pimpinan') return true;
-        const sectors = issue.leadingSectors || (issue.leadingSector ? [issue.leadingSector] : []);
-        return sectors.includes(agency) && issue.aiAnalysis;
+        return true;
       });
 
       return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-          <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-slate-100 pb-6">
+          <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b pb-6">
             <div>
-              <h2 className="text-xl font-bold text-slate-800 flex items-center">
-                <Brain className="mr-2 text-blue-600" /> Analisis Isu
-              </h2>
+              <h2 className="text-xl font-bold text-slate-800 flex items-center"><Brain className="mr-2 text-blue-600" /> Analisis Isu</h2>
             </div>
             <div className="flex flex-wrap gap-3 items-end">
               {role === 'admin' && (
                 <div className="flex gap-2">
-                  <button onClick={() => onDownloadRecap(issuesForAnalysis)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm flex items-center transition-colors h-[38px]">
+                  <button onClick={() => onDownloadRecap(issuesForAnalysis)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center transition-colors h-[38px]" title="Download Rekap Statistik">
                     <FileText size={16} className="mr-2"/> Rekap Data
                   </button>
-                  <button onClick={() => onDownloadAll(issuesForAnalysis)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm flex items-center transition-colors h-[38px]">
+                  <button onClick={() => onDownloadAll(issuesForAnalysis)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center transition-colors h-[38px]" title="Download Semua Hasil Analisis">
                     <Download size={16} className="mr-2"/> Semua Analisis
                   </button>
                 </div>
               )}
-              <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-slate-500 mb-1">Periode Waktu</label>
+              <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-500 mb-1">Periode Waktu</label>
                 <select className="border px-3 py-1.5 rounded-lg text-sm outline-none bg-white h-[38px]" value={filterPeriod} onChange={(e)=>setFilterPeriod(e.target.value)}>
                   <option value="all">Semua Waktu</option><option value="today">Hari Ini</option><option value="week">1 Minggu Terakhir</option><option value="month">Bulan Ini</option>
                 </select>
               </div>
-              <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-slate-500 mb-1">Filter Media</label>
+              <div className="flex flex-col"><label className="text-[10px] font-bold text-slate-500 mb-1">Filter Media</label>
                 <select className="border px-3 py-1.5 rounded-lg text-sm outline-none bg-white h-[38px]" value={filterMedia} onChange={(e)=>setFilterMedia(e.target.value)}>
                   <option value="">Semua Media</option><option value="Media Sosial">Media Sosial</option><option value="Media Online">Media Online</option><option value="Media Cetak">Media Cetak</option>
                 </select>
@@ -586,66 +582,70 @@
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {issuesForAnalysis.map(issue => {
+              const sectors = issue.leadingSectors || (issue.leadingSector ? [issue.leadingSector] : []);
+              const isAllowedToSeeAI = role === 'admin' || role === 'pimpinan' || (role === 'pd' && sectors.includes(agency));
               const isThisAnalyzing = analyzingId === issue.id;
               const isAnyAnalyzing = analyzingId !== null;
-
+              
               return (
-                <div key={issue.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow flex flex-col relative overflow-hidden">
-                  {!issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-amber-100 text-amber-700 text-[10px] font-bold px-3 py-1 rounded-bl-lg">DRAFT</div>}
-                  {issue.analysisPublished && <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-bl-lg">PUBLISHED</div>}
+                <div key={issue.id} className="bg-slate-50 border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow flex flex-col relative overflow-hidden">
+                  {!issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-amber-100 text-amber-700 text-[9px] font-bold px-2 py-1 rounded-bl-lg">DRAFT</div>}
+                  {issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-700 text-[9px] font-bold px-2 py-1 rounded-bl-lg">PUBLISHED</div>}
                   
-                  <div className="flex justify-between items-center mb-3 mt-2">
-                    <div className="flex gap-2">
-                      <span className="text-[10px] font-bold px-2 py-1 bg-white border border-slate-200 rounded text-slate-600">{issue.sourceType}</span>
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
+                  <div className="flex justify-between items-start mb-3 mt-2">
+                    <div className="flex gap-1.5">
+                        <span className="text-[10px] font-bold px-2 py-1 bg-white border border-slate-200 rounded text-slate-600">{issue.sourceType}</span>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
                     </div>
                     <span className="text-[10px] text-slate-400 font-medium">{issue.date}</span>
                   </div>
-                  
                   <h3 className="font-bold text-slate-800 text-sm mb-2 line-clamp-2">{issue.title}</h3>
-                  <p className="text-xs text-blue-600 font-medium mb-4 flex-1">{(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}</p>
+                  <p className="text-xs text-blue-600 font-bold mb-4 flex-1 line-clamp-2" title={(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}>
+                      {(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}
+                  </p>
                   
                   <div className="mt-auto space-y-2">
                     {issue.aiAnalysis ? (
-                      <>
+                      <div className="space-y-2">
                         <div className="flex gap-2">
-                          <button onClick={() => onView(issue)} className="flex-1 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-bold flex justify-center items-center transition-colors">
-                            <Eye size={14} className="mr-1.5"/> Lihat Detail
+                          <button onClick={() => onView(issue)} className={`flex-1 py-2 rounded-lg text-[11px] font-bold flex justify-center items-center transition-colors ${isAllowedToSeeAI ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-slate-200 text-slate-500'}`}>
+                            {isAllowedToSeeAI ? <><Eye size={14} className="mr-1.5"/> Lihat Detail</> : <><Lock size={14} className="mr-1.5"/> Akses Terbatas</>}
                           </button>
                           {role === 'admin' && (
-                            <>
-                              <button onClick={() => onEditAnalysis(issue)} className="px-3 py-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors" title="Edit Manual Analisis">
-                                  <Edit2 size={14}/>
-                              </button>
-                              <button onClick={() => onAnalyze(issue)} disabled={isAnyAnalyzing} className="px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Analisis Ulang Isu">
-                                  {isThisAnalyzing ? <Loader2 size={14} className="animate-spin"/> : <Brain size={14}/>}
-                              </button>
-                              <button onClick={() => onDelete(issue.id)} className="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="Hapus Isu">
-                                  <Trash2 size={14}/>
-                              </button>
-                            </>
+                            <button onClick={() => onEditAnalysis(issue)} className="px-3 py-2 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-lg transition-colors" title="Edit Manual Analisis">
+                                <Edit2 size={14}/>
+                            </button>
+                          )}
+                          {role === 'admin' && (
+                            <button onClick={() => onAnalyze(issue)} disabled={isAnyAnalyzing} className="px-3 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors flex items-center justify-center" title="Analisis Ulang Isu">
+                                {isThisAnalyzing ? <Loader2 size={14} className="animate-spin"/> : <Brain size={14}/>}
+                            </button>
+                          )}
+                          {role === 'admin' && (
+                            <button onClick={() => onDelete(issue.id)} className="px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-colors flex items-center justify-center" title="Hapus Isu">
+                                <Trash2 size={14}/>
+                            </button>
                           )}
                         </div>
                         {role === 'admin' && (
-                          <button onClick={() => onPublishToggle(issue.id, issue.analysisPublished)} 
-                            className={`w-full py-2.5 rounded-lg text-xs font-bold flex justify-center items-center transition-colors mt-1 ${issue.analysisPublished ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
+                          <button onClick={() => onPublishToggle(issue.id, issue.analysisPublished)} className={`w-full py-2 rounded-lg text-[11px] font-bold flex justify-center items-center transition-colors ${issue.analysisPublished ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}>
                             {issue.analysisPublished ? 'Unpublish' : <><Send size={14} className="mr-1.5"/> Publish</>}
                           </button>
                         )}
-                      </>
+                      </div>
                     ) : (
-                      role === 'admin' && (
-                        <div className="flex gap-2">
-                          <button onClick={() => onAnalyze(issue)} disabled={isAnyAnalyzing} 
-                            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all flex items-center justify-center disabled:opacity-50">
-                            {isThisAnalyzing ? <Loader2 size={14} className="animate-spin mr-2"/> : <Brain size={14} className="mr-2"/>}
-                            {isThisAnalyzing ? 'Menganalisis...' : 'Analisis AI'}
+                      <div className="flex gap-2">
+                        {role === 'admin' && (
+                          <button onClick={() => onAnalyze(issue)} disabled={isAnyAnalyzing} className="flex-1 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold shadow-md transition-all flex items-center justify-center">
+                            {isThisAnalyzing ? <Loader2 size={14} className="animate-spin mr-2"/> : <Brain size={14} className="mr-2"/>} Analisis
                           </button>
-                          <button onClick={() => onDelete(issue.id)} className="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="Hapus Isu">
+                        )}
+                        {role === 'admin' && (
+                          <button onClick={() => onDelete(issue.id)} className="px-3 py-2 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg transition-colors flex items-center justify-center" title="Hapus Isu">
                               <Trash2 size={14}/>
                           </button>
-                        </div>
-                      )
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -653,8 +653,8 @@
             })}
             {issuesForAnalysis.length === 0 && (
               <div className="col-span-full py-12 text-center">
-                 <BrainCircuit className="mx-auto h-12 w-12 text-slate-300 mb-3"/>
-                 <p className="text-slate-500">Tidak ada isu yang tersedia untuk ditampilkan.</p>
+                 <Filter className="mx-auto h-12 w-12 text-slate-300 mb-3"/>
+                 <p className="text-slate-500 text-sm">Tidak ada isu yang sesuai dengan filter.</p>
               </div>
             )}
           </div>
@@ -667,25 +667,22 @@
         const defaultData = initialData || {
           sourceType: type, title: '', date: new Date().toISOString().split('T')[0],
           sentiment: 'Netral', leadingSector: LEADING_SECTORS[0],
-          postType: 'Post Foto/Video/Teks', caption: '', link: '', domain: '', content: '', printType: 'Koran', mediaName: '', comments: []
+          postType: 'Post Foto/Video', caption: '', link: '', domain: '', content: '', printType: 'Koran', mediaName: ''
         };
-        // Menjaga kompatibilitas data lama
         return {
           ...defaultData,
           leadingSectors: defaultData.leadingSectors || (defaultData.leadingSector ? [defaultData.leadingSector] : [LEADING_SECTORS[0]]),
           links: defaultData.links || (defaultData.link ? [defaultData.link] : ['']),
           domains: defaultData.domains || (defaultData.domain ? [defaultData.domain] : ['']),
           platforms: defaultData.platforms || (defaultData.platform ? [defaultData.platform] : ['Instagram']),
-          accounts: defaultData.accounts || (defaultData.account ? [defaultData.account] : ['']),
-          postType: defaultData.postType === 'Komentar' || defaultData.postType === 'Ulasan' ? 'Post Foto/Video/Teks' : defaultData.postType,
-          comments: defaultData.comments || []
+          accounts: defaultData.accounts || (defaultData.account ? [defaultData.account] : [''])
         };
       });
 
       const [file, setFile] = useState(null);
 
       const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
+      
       const handleArrayChange = (field, index, value) => {
           const newArr = [...(formData[field] || [])];
           newArr[index] = value;
@@ -701,21 +698,6 @@
           setFormData({ ...formData, [field]: newArr });
       };
 
-      // Handler khusus untuk comments array
-      const handleCommentChange = (index, field, value) => {
-          const newComments = [...(formData.comments || [])];
-          if (!newComments[index]) newComments[index] = { sentiment: 'Netral', account: '', content: '' };
-          newComments[index][field] = value;
-          setFormData({ ...formData, comments: newComments });
-      };
-      const addCommentItem = () => {
-          setFormData({ ...formData, comments: [...(formData.comments || []), { sentiment: 'Netral', account: '', content: '' }] });
-      };
-      const removeCommentItem = (index) => {
-          const newComments = (formData.comments || []).filter((_, i) => i !== index);
-          setFormData({ ...formData, comments: newComments });
-      };
-
       const handleSubmit = (e) => { e.preventDefault(); onSave(formData, file); };
 
       return (
@@ -728,16 +710,7 @@
             <form onSubmit={handleSubmit} className="p-6 overflow-y-auto custom-scrollbar space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Tanggal</label><input type="date" name="date" required value={formData.date} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    {type === 'Media Sosial' ? 'Sentimen Postingan' : 'Sentimen'}
-                  </label>
-                  <select name="sentiment" value={formData.sentiment} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white">
-                    <option value="Positif">Positif</option>
-                    <option value="Netral">Netral</option>
-                    <option value="Negatif">Negatif</option>
-                  </select>
-                </div>
+                <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Sentimen</label><select name="sentiment" value={formData.sentiment} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white"><option value="Positif">Positif</option><option value="Netral">Netral</option><option value="Negatif">Negatif</option></select></div>
               </div>
               <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Judul Isu</label><input type="text" name="title" required value={formData.title} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
               
@@ -785,7 +758,7 @@
                        
                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                            <div className="flex justify-between items-center mb-2">
-                               <label className="text-[11px] font-bold text-slate-700">Akun Postingan</label>
+                               <label className="text-[11px] font-bold text-slate-700">Akun (Username)</label>
                                <button type="button" onClick={() => addArrayItem('accounts', '')} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200 transition-colors">+ Tambah</button>
                            </div>
                            {(formData.accounts || []).map((acc, i) => (
@@ -799,13 +772,7 @@
                        </div>
                    </div>
 
-                   <div>
-                     <label className="block text-[11px] font-bold text-slate-700 mb-1">Jenis Interaksi</label>
-                     <select name="postType" value={formData.postType} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl bg-white">
-                       <option value="Direct Message (DM)">Direct Message (DM)</option>
-                       <option value="Post Foto/Video/Teks">Post Foto/Video/Teks</option>
-                     </select>
-                   </div>
+                   <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Jenis Interaksi</label><select name="postType" value={formData.postType} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl bg-white"><option value="Komentar">Komentar</option><option value="DM">DM</option><option value="Post Foto/Video">Post Foto/Video</option><option value="Ulasan">Ulasan</option></select></div>
                    
                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                       <div className="flex justify-between items-center mb-2">
@@ -823,45 +790,8 @@
                    </div>
                    
                    <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Isi/Caption</label><textarea name="caption" rows="3" value={formData.caption} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none"></textarea></div>
-                   
-                   {/* Fitur Komentar Baru (Khusus Postingan) */}
-                   {formData.postType === 'Post Foto/Video/Teks' && (
-                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 mt-2">
-                        <div className="flex justify-between items-center mb-3">
-                            <label className="text-[11px] font-bold text-slate-700">Daftar Komentar Netizen (Opsional)</label>
-                            <button type="button" onClick={addCommentItem} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200 transition-colors">+ Tambah Komentar</button>
-                        </div>
-                        {(formData.comments || []).map((comment, i) => (
-                            <div key={i} className="p-3 bg-white rounded-lg border border-slate-200 mb-2 relative">
-                                <button type="button" onClick={() => removeCommentItem(i)} className="absolute top-2 right-2 text-red-500 hover:bg-red-50 p-1 rounded-md"><X size={14}/></button>
-                                <div className="grid grid-cols-2 gap-3 mb-2 pr-6">
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-slate-700 mb-1">Sentimen Komentar</label>
-                                        <select value={comment.sentiment} onChange={(e) => handleCommentChange(i, 'sentiment', e.target.value)} className="w-full px-2 py-1.5 text-xs border rounded-lg bg-slate-50 outline-none">
-                                            <option value="Positif">Positif</option>
-                                            <option value="Netral">Netral</option>
-                                            <option value="Negatif">Negatif</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-bold text-slate-700 mb-1">Akun Netizen</label>
-                                        <input type="text" value={comment.account} onChange={(e) => handleCommentChange(i, 'account', e.target.value)} className="w-full px-2 py-1.5 text-xs border rounded-lg outline-none" placeholder="@username" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-slate-700 mb-1">Isi Komentar</label>
-                                    <textarea rows="2" value={comment.content} onChange={(e) => handleCommentChange(i, 'content', e.target.value)} className="w-full px-2 py-1.5 text-xs border rounded-lg outline-none"></textarea>
-                                </div>
-                            </div>
-                        ))}
-                        {(!formData.comments || formData.comments.length === 0) && (
-                            <p className="text-center text-[10px] text-slate-400 py-2">Belum ada respons komentar yang ditambahkan.</p>
-                        )}
-                     </div>
-                   )}
                  </>
               )}
-
               {type === 'Media Online' && (
                  <>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -902,7 +832,7 @@
               {type === 'Media Cetak' && (
                  <>
                    <div className="grid grid-cols-2 gap-4">
-                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Jenis Media</label><select name="printType" value={formData.printType} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl bg-white"><option value="Koran">Koran</option><option value="Majalah">Majalah</option></select></div>
+                     <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Jenis Media</label><select name="printType" value={formData.printType} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl bg-white"><option value="Koran">Koran</option><option value="Majalah">Majalah</option><option value="Tabloid">Tabloid</option></select></div>
                      <div><label className="block text-[11px] font-bold text-slate-700 mb-1">Nama Media</label><input type="text" name="mediaName" value={formData.mediaName} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" /></div>
                    </div>
                    
@@ -998,7 +928,6 @@
       const [viewingIssue, setViewingIssue] = useState(null);
       const [handlingIssue, setHandlingIssue] = useState(null);
       const [editingAnalysisIssue, setEditingAnalysisIssue] = useState(null);
-      const [isFetchingNews, setIsFetchingNews] = useState(false);
 
       const showToast = (message, type = 'info') => {
         setToast({ show: true, message, type }); setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 4000);
@@ -1092,76 +1021,226 @@
         showToast(!currentStatus ? "Dipublish" : "Ditarik (Unpublish)", "success");
       };
 
-      const handleFetchNews = async () => {
+      const handleAnalyzeAI = async (issue) => {
         if (userRole !== 'admin') return;
-        if (GNEWS_API_KEY.includes("MASUKKAN")) return showToast("API Key belum diset", "error");
         
-        setIsFetchingNews(true); 
-        showToast("Mencari berita...", "info");
+        if (!OPENAI_API_KEY || OPENAI_API_KEY.includes("MASUKKAN")) {
+            showToast("OpenAI API Key belum diatur di kode.", "error");
+            return;
+        }
+
+        setAnalyzingId(issue.id); showToast("AI menganalisis...", "info");
         
         try {
-          const q = encodeURIComponent('Pemkot Bandung');
-          let data;
+          const sectorsStr = (issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ');
+          const prompt = `Sebagai analis kebijakan ahli Pemerintah Kota Bandung era Muhammad Farhan, analisislah isu: Judul: ${issue.title}. Detail: ${issue.content || issue.caption || 'Tidak ada detail'}. Sektor: ${sectorsStr}. 
+          Tugas:
+          1. Buat 'analysis' mendalam.
+          2. Buat 'policyRecommendation' dengan memberikan rekomendasi sebanyak mungkin yang relevan dengan visi misi program Pemkot Bandung era Muhammad Farhan. Pisahkan setiap rekomendasi dengan nomor ke bawah, dan SETIAP REKOMENDASI WAJIB diawali dengan kata kerja "Me...".
+          3. Buat 'publicationRecommendation' (sama, bernomor ke bawah, wajib diawali "Me...").
+          Format keluaran HARUS berupa JSON murni dengan struktur: {"analysis": "...", "policyRecommendation": "1. Me...\\n2. Me...", "publicationRecommendation": "1. Me...\\n2. Me..."}`;
+          
+          let aiResult = null;
           
           try {
-            const res = await fetch(`https://gnews.io/api/v4/search?q=${q}&lang=id&country=id&max=10&apikey=${GNEWS_API_KEY}`);
-            if (!res.ok) {
-              const errData = await res.json().catch(()=>({}));
-              throw new Error(errData.errors ? errData.errors[0] : "Akses ke GNews ditolak atau limit habis.");
-            }
-            data = await res.json();
-          } catch (fetchError) {
-            if (fetchError.message === 'Failed to fetch') {
-              console.warn("CORS Blocked by browser preview. Injecting mock data.");
-              showToast("Akses API diblokir preview browser. Menggunakan data simulasi...", "info");
-              
-              await new Promise(resolve => setTimeout(resolve, 1500)); 
-              
-              data = {
-                articles: [
-                  {
-                    title: "Pemkot Bandung Percepat Penanganan Banjir di Gedebage",
-                    publishedAt: new Date().toISOString(),
-                    source: { name: "Bandung News" },
-                    url: "https://bandung.go.id",
-                    description: "Pemerintah Kota Bandung di bawah arahan Muhammad Farhan menginstruksikan Dinas PU untuk mempercepat proyek infrastruktur pengendali banjir..."
-                  },
-                  {
-                    title: "Disdik Kota Bandung Luncurkan Program Sekolah Inklusif Unggulan",
-                    publishedAt: new Date().toISOString(),
-                    source: { name: "Pikiran Rakyat" },
-                    url: "https://pikiran-rakyat.com",
-                    description: "Dinas Pendidikan Kota Bandung meresmikan program baru guna memastikan pemerataan pendidikan yang ramah anak."
-                  }
-                ]
-              };
-            } else {
-              throw fetchError;
-            }
-          }
-          
-          if (!data || !data.articles) throw new Error("Format data berita tidak valid");
-          
-          let added = 0;
-          for (const article of data.articles) {
-            if (!issues.some(i => i.title.toLowerCase() === article.title.toLowerCase())) {
-              await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), {
-                sourceType: 'Media Online', title: article.title, date: article.publishedAt.split('T')[0], domain: article.source.name,
-                link: article.url, content: article.description, sentiment: 'Netral', leadingSector: 'Lainnya', status: 'Belum Ditangani', createdAt: new Date().toISOString()
+              const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                     'Authorization': `Bearer ${OPENAI_API_KEY}`
+                 },
+                 body: JSON.stringify({
+                     model: 'gpt-4o-mini',
+                     messages: [
+                         { role: 'system', content: 'You are a helpful policy analyst assistant. Always respond with raw valid JSON.' },
+                         { role: 'user', content: prompt }
+                     ],
+                     response_format: { type: "json_object" }
+                 })
               });
-              added++;
-            }
+
+              const textRes = await res.text();
+              let resultData;
+              try {
+                  resultData = JSON.parse(textRes);
+              } catch (e) {
+                  throw new Error("OpenAI mengembalikan format yang tidak valid atau kosong.");
+              }
+
+              if (resultData.error) throw new Error(resultData.error.message);
+              
+              const contentText = resultData.choices[0].message.content || "{}";
+              aiResult = JSON.parse(contentText);
+          } catch (openaiError) {
+              const errMsg = openaiError?.message?.toLowerCase() || "";
+              // Menambahkan 'failed to fetch' dan 'network' ke dalam pemicu fallback AI Cadangan
+              const isQuotaError = errMsg.includes("quota") || errMsg.includes("exceeded") || errMsg.includes("billing") || errMsg.includes("429") || errMsg.includes("failed to fetch") || errMsg.includes("network error");
+              
+              if (!isQuotaError) console.error("OpenAI Error:", openaiError);
+              
+              if (isQuotaError) {
+                  showToast("Koneksi/Kuota OpenAI bermasalah. Menggunakan AI Cadangan gratis...", "info");
+                  const apiKey = ""; 
+                  const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                          contents: [{ parts: [{ text: prompt }] }],
+                          generationConfig: {
+                              responseMimeType: "application/json",
+                              responseSchema: {
+                                  type: "OBJECT",
+                                  properties: {
+                                      analysis: { type: "STRING" },
+                                      policyRecommendation: { type: "STRING" },
+                                      publicationRecommendation: { type: "STRING" }
+                                  },
+                                  required: ["analysis", "policyRecommendation", "publicationRecommendation"]
+                              }
+                          }
+                      })
+                  });
+                  
+                  const geminiTextRes = await geminiRes.text();
+                  let geminiData;
+                  try { geminiData = JSON.parse(geminiTextRes); } catch (e) { throw new Error("API Gemini mengembalikan respons kosong."); }
+                  if (geminiData.error) throw new Error(geminiData.error.message);
+                  
+                  let geminiOutput = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+                  geminiOutput = geminiOutput.replace(/```json/g, '').replace(/```/g, '').trim();
+                  
+                  try { aiResult = JSON.parse(geminiOutput); } catch (parseError) { throw new Error("Gagal membaca hasil analisis."); }
+              } else { throw openaiError; }
           }
-          showToast(added > 0 ? `Berhasil menarik ${added} berita` : "Semua berita sudah ada", added > 0 ? "success" : "info");
+
+          if (aiResult) {
+              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', issue.id), { aiAnalysis: aiResult, analyzedAt: new Date().toISOString() });
+              showToast("Selesai dianalisis", "success");
+          }
           
         } catch (e) { 
-          console.error("Detail Error GNews:", e);
-          showToast(`${e.message}`, "error"); 
-        } finally { 
-          setIsFetchingNews(false); 
-        }
+            console.error(e);
+            let errMsg = "Gagal analisis (Cek Console/API Key)";
+            if (e.message.toLowerCase().includes("quota") || e.message.toLowerCase().includes("exceeded")) errMsg = "API Key kehabisan kuota limit.";
+            if (e.message.includes("kosong") || e.message.includes("valid")) errMsg = e.message;
+            showToast(errMsg, "error"); 
+        } finally { setAnalyzingId(null); }
       };
 
+      // Fungsi Download Laporan (PDF)
+      const handleDownloadPDF = (issue) => {
+          if (!window.html2pdf) {
+              showToast("Library PDF belum termuat, silakan coba beberapa saat lagi.", "error");
+              return;
+          }
+          const content = document.createElement('div');
+          content.innerHTML = `
+              <div style="padding: 30px; font-family: 'Inter', sans-serif; color: #333;">
+                  <h2 style="color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Laporan Analisis Isu</h2>
+                  <table style="width: 100%; margin-bottom: 20px; font-size: 14px;">
+                      <tr><td style="width: 130px; font-weight: bold;">Judul</td><td>: ${issue.title}</td></tr>
+                      <tr><td style="font-weight: bold;">Tanggal</td><td>: ${issue.date}</td></tr>
+                      <tr><td style="font-weight: bold;">Media / Platform</td><td>: ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}</td></tr>
+                      <tr><td style="font-weight: bold;">Akun / Domain</td><td>: ${(issue.domains || []).concat(issue.accounts || []).filter(Boolean).join(', ') || '-'}</td></tr>
+                      <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                      <tr><td style="font-weight: bold;">Leading Sector</td><td>: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  </table>
+                  <h3 style="color: #0f172a; margin-top: 20px;">Analisis</h3>
+                  <p style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">${issue.aiAnalysis?.analysis}</p>
+                  <h3 style="color: #0f172a; margin-top: 20px;">Rekomendasi Kebijakan</h3>
+                  <p style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">${issue.aiAnalysis?.policyRecommendation}</p>
+                  <h3 style="color: #0f172a; margin-top: 20px;">Rekomendasi Publikasi</h3>
+                  <p style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">${issue.aiAnalysis?.publicationRecommendation}</p>
+              </div>
+          `;
+          window.html2pdf().from(content).set({
+              margin: 10,
+              filename: `Analisis_${issue.title.substring(0, 20)}.pdf`,
+              html2canvas: { scale: 2 },
+              jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          }).save();
+      };
+
+      // Fungsi Download Laporan (Ms. Word)
+      const handleDownloadWord = (issue) => {
+          const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML to Word</title></head><body>";
+          const footer = "</body></html>";
+          const content = `
+              <h2 style="color: #1e293b;">Laporan Analisis Isu</h2>
+              <table style="width: 100%; margin-bottom: 20px; font-size: 14px;">
+                  <tr><td style="width: 130px; font-weight: bold;">Judul</td><td>: ${issue.title}</td></tr>
+                  <tr><td style="font-weight: bold;">Tanggal</td><td>: ${issue.date}</td></tr>
+                  <tr><td style="font-weight: bold;">Media / Platform</td><td>: ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}</td></tr>
+                  <tr><td style="font-weight: bold;">Akun / Domain</td><td>: ${(issue.domains || []).concat(issue.accounts || []).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Leading Sector</td><td>: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
+              </table>
+              <br/>
+              <h3>Analisis</h3>
+              <p>${(issue.aiAnalysis?.analysis || '').replace(/\n/g, '<br>')}</p>
+              <h3>Rekomendasi Kebijakan</h3>
+              <p>${(issue.aiAnalysis?.policyRecommendation || '').replace(/\n/g, '<br>')}</p>
+              <h3>Rekomendasi Publikasi</h3>
+              <p>${(issue.aiAnalysis?.publicationRecommendation || '').replace(/\n/g, '<br>')}</p>
+          `;
+          const html = header + content + footer;
+          const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `Analisis_${issue.title.substring(0,20)}.doc`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+      };
+
+      // Fungsi Download Semua Laporan Analisis (Ms. Word Gabungan)
+      const handleDownloadAllWord = (issuesToDownload) => {
+          const analyzedIssues = issuesToDownload.filter(i => i.aiAnalysis);
+          
+          if (analyzedIssues.length === 0) {
+              showToast("Tidak ada isu yang sudah dianalisis untuk didownload.", "error");
+              return;
+          }
+
+          const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Rekap Analisis Isu</title></head><body>";
+          const footer = "</body></html>";
+          
+          let content = `<h1 style="text-align: center; color: #1e293b;">Rekapitulasi Laporan Analisis Isu</h1><br/>`;
+
+          analyzedIssues.forEach((issue, index) => {
+              content += `
+              <h2 style="color: #1e293b;">${index + 1}. ${issue.title}</h2>
+              <table style="width: 100%; margin-bottom: 20px; font-size: 14px;">
+                  <tr><td style="width: 130px; font-weight: bold;">Tanggal</td><td>: ${issue.date}</td></tr>
+                  <tr><td style="font-weight: bold;">Media / Platform</td><td>: ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}</td></tr>
+                  <tr><td style="font-weight: bold;">Akun / Domain</td><td>: ${(issue.domains || []).concat(issue.accounts || []).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Leading Sector</td><td>: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
+              </table>
+              <br/>
+              <h3>Analisis</h3>
+              <p>${(issue.aiAnalysis?.analysis || '').replace(/\n/g, '<br>')}</p>
+              <h3>Rekomendasi Kebijakan</h3>
+              <p>${(issue.aiAnalysis?.policyRecommendation || '').replace(/\n/g, '<br>')}</p>
+              <h3 style="font-family: sans-serif;">Rekomendasi Publikasi</h3>
+              <p style="font-family: sans-serif;">${(issue.aiAnalysis?.publicationRecommendation || '').replace(/\n/g, '<br>')}</p>
+              <hr style="margin: 40px 0; border: 1px solid #cbd5e1;" />
+              `;
+          });
+
+          const html = header + content + footer;
+          const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'Semua_Laporan_Analisis_Isu.doc';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+      };
+
+      // Fungsi Download Rekapitulasi Analisis Statistik (Ms. Word)
       const handleDownloadRecapWord = (filteredIssues) => {
           if (filteredIssues.length === 0) {
               showToast("Tidak ada data untuk direkap.", "error");
@@ -1258,13 +1337,13 @@
 
         let text = `Yth. Bapak Wali Kota Bandung\ndi tempat.\n\nMohon izin menyampaikan terkait isu yang berkembang berkaitan dengan Pemerintah Kota Bandung, pada hari ${dateStr}.\n\n`;
         
-        text += `*Ringkasan Isu:*\n${issue.title}\n`;
+        text += `*Judul Isu:* ${issue.title}\n`;
+        text += `*Media/Platform:* ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}\n`;
+        text += `*Sektor Terkait:* ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}\n\n`;
         
         const links = (issue.links || [issue.link]).filter(Boolean);
         if (links.length > 0) {
-          text += `\n*Sumber Berita / Referensi:*\n${links.map((l, i) => `${i+1}. ${issue.sourceType}: ${l}`).join('\n')}\n\n`;
-        } else {
-          text += `\n*Sumber Berita / Referensi:*\n1. ${issue.sourceType} ${issue.platforms?.length ? '(' + issue.platforms.filter(Boolean).join(', ') + ')' : ''}\n\n`;
+          text += `*Tautan Berita/Sumber:*\n${links.map((l, i) => `${i+1}. ${l}`).join('\n')}\n\n`;
         }
         
         if (issue.aiAnalysis) {
@@ -1273,7 +1352,7 @@
           text += `*3. Rekomendasi Publikasi:*\n${issue.aiAnalysis.publicationRecommendation}\n\n`;
         }
         
-        text += `Demikian analisis isu yang dapat Kami sampaikan. Terimakasih.\n\nTembusan:\nYth. Bapak Wakil Wali Kota Bandung\nYth. Bapak Sekretaris Daerah Kota Bandung`;
+        text += `Demikian analisis isu yang dapat Kami sampaikan. Terimakasih\n\nTembusan:\nYth. Bapak Wakil Wali Kota Bandung\nYth. Bapak Sekretaris Daerah Kota Bandung`;
         
         const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
@@ -1350,7 +1429,7 @@
             <div className="flex-1 overflow-y-auto p-5 scroll-smooth"><div className="max-w-7xl mx-auto">
               {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} />}
               {activeTab === 'social' && <DataTableView title="Media Sosial" type="Media Sosial" issues={issues.filter(i=>i.sourceType==='Media Sosial')} onAdd={()=>setIsIssueModalOpen('Media Sosial')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Sosial');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
-              {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} onFetchNews={handleFetchNews} isFetchingNews={isFetchingNews} />}
+              {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
               {activeTab === 'print' && <DataTableView title="Media Cetak" type="Media Cetak" issues={issues.filter(i=>i.sourceType==='Media Cetak')} onAdd={()=>setIsIssueModalOpen('Media Cetak')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Cetak');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
               {activeTab === 'analysis' && <AnalysisView issues={issues} role={userRole} agency={userProfile?.agency} onAnalyze={handleAnalyzeAI} analyzingId={analyzingId} onView={setViewingIssue} onPublishToggle={togglePublishAnalysis} onEditAnalysis={setEditingAnalysisIssue} onDelete={deleteIssue} onDownloadAll={handleDownloadAllWord} onDownloadRecap={handleDownloadRecapWord} />}
             </div></div>
@@ -1361,10 +1440,10 @@
 
             {viewingIssue && (
               <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl p-6 overflow-y-auto max-h-[90vh] relative">
+                <div className="bg-white rounded-2xl w-full max-w-4xl p-6 overflow-y-auto max-h-[90vh] relative shadow-2xl">
                   <button onClick={()=>setViewingIssue(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X size={18}/></button>
                   <h2 className="text-xl font-bold mb-4 pr-10">{viewingIssue.title}</h2>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       
                       <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 shadow-sm">
@@ -1392,7 +1471,7 @@
                                     <strong>Tautan/Link:</strong>
                                     <ul className="list-disc pl-5 mt-1 text-xs">
                                         {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).map((l, i) => (
-                                            <li key={i}><a href={l} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">{l}</a></li>
+                                            <li key={i}><a href={l} target="_blank" className="text-blue-600 hover:underline break-all">{l}</a></li>
                                         ))}
                                     </ul>
                                 </div>
@@ -1409,7 +1488,7 @@
                              
                              {viewingIssue.attachmentUrl && (
                                 <div className="mt-2 pt-3 border-t border-blue-200">
-                                    <a href={viewingIssue.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-sm"><ImageIcon size={14} className="mr-1.5"/> Lihat Lampiran Isu</a>
+                                    <a href={viewingIssue.attachmentUrl} target="_blank" className="inline-flex bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] shadow-sm"><ImageIcon size={14} className="mr-1.5"/> Lihat Lampiran Isu</a>
                                 </div>
                              )}
                           </div>
@@ -1417,29 +1496,10 @@
 
                       <div className="bg-slate-50 p-4 rounded-xl border border-slate-100"><p className="font-bold text-slate-500 mb-1 text-[11px]">Isi/Konten</p><p className="text-sm whitespace-pre-wrap">{viewingIssue.content || viewingIssue.caption || '-'}</p></div>
                       
-                      {/* Daftar Komentar Netizen untuk Medsos */}
-                      {viewingIssue.sourceType === 'Media Sosial' && viewingIssue.comments && viewingIssue.comments.length > 0 && (
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                          <p className="text-sm font-bold text-slate-500 mb-3">Komentar Netizen</p>
-                          <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                            {viewingIssue.comments.map((c, i) => (
-                              <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
-                                <div className="flex justify-between items-center mb-1.5">
-                                  <span className="text-xs font-bold text-blue-600">@{c.account || 'anonim'}</span>
-                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${c.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : c.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{c.sentiment}</span>
-                                </div>
-                                <p className="text-sm text-slate-700">{c.content}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
                       <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <p className="font-bold text-slate-500 mb-2 text-[11px]">Status Penanganan</p>
-                        <p className="text-sm font-bold mb-2">Status: {viewingIssue.status}</p>
-                        {viewingIssue.handlingNotes && <p className="text-sm border-t border-slate-200 pt-2 mt-2 whitespace-pre-wrap">{viewingIssue.handlingNotes}</p>}
-                        {viewingIssue.handlingAttachmentUrl && <a href={viewingIssue.handlingAttachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-3 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg font-bold text-[11px]"><ImageIcon size={14} className="mr-1"/> Bukti Penanganan</a>}
+                        <p className="font-bold text-slate-500 mb-2 text-[11px]">Status Penanganan</p><p className="text-sm font-bold">Status: {viewingIssue.status}</p>
+                        {viewingIssue.handlingNotes && <p className="text-sm border-t pt-2 mt-2 whitespace-pre-wrap">{viewingIssue.handlingNotes}</p>}
+                        {viewingIssue.handlingAttachmentUrl && <a href={viewingIssue.handlingAttachmentUrl} target="_blank" className="inline-flex mt-3 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg font-bold text-[11px]"><ImageIcon size={14} className="mr-1"/> Bukti Penanganan</a>}
                         {(() => {
                            const sectors = viewingIssue.leadingSectors || [viewingIssue.leadingSector];
                            if (userRole === 'admin' || (userRole === 'pd' && sectors.includes(userProfile?.agency))) {
