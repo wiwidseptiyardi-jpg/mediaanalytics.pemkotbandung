@@ -40,32 +40,31 @@
     
     import { 
       LayoutDashboard, Share2, Globe, Newspaper, BrainCircuit, 
-      Menu, X, Search, Plus, Calendar, BarChart2,
-      Activity, LogOut, ChevronRight, Upload, CheckCircle2,
-      AlertTriangle, Info, Building, FileText,
-      Link as LinkIcon, Image as ImageIcon, Loader2, Save, Trash2, Edit2, Eye,
-      Bell, MessageCircle, Brain, Download, Send, Lock, Filter
+      Menu, X, Search, Plus, Activity, LogOut, Upload, CheckCircle2,
+      Building, Image as ImageIcon, Loader2, Save, Trash2, Edit2, Eye, BarChart2, Calendar,
+      Filter, Send, Lock, Brain, Download, FileText, Bell, MessageCircle
     } from 'https://esm.sh/lucide-react@0.378.0?deps=react@18.3.1';
 
     import { 
-      BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
-      ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell
+      ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell,
+      BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
+      AreaChart, Area, CartesianGrid
     } from 'https://esm.sh/recharts@2.12.7?deps=react@18.3.1,react-dom@18.3.1';
 
+    // CDN Firebase Resmi
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js';
     import { 
       getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
       signOut, onAuthStateChanged, sendPasswordResetEmail
     } from 'https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js';
     import { 
-      getFirestore, doc, setDoc, getDoc, collection, onSnapshot, 
+      initializeFirestore, doc, setDoc, getDoc, collection, onSnapshot, 
       addDoc, updateDoc, deleteDoc, query, orderBy
     } from 'https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js';
     import { 
       getStorage, ref, uploadBytesResumable, getDownloadURL 
     } from 'https://www.gstatic.com/firebasejs/10.5.0/firebase-storage.js';
 
-    // 1. KONFIGURASI FIREBASE
     const firebaseConfig = {
       apiKey: "AIzaSyBgdRBGLeU47SxYGMlArfLbgPwVHtRpFQ4",
       authDomain: "media-analytics-pemkot-bandung.firebaseapp.com",
@@ -78,15 +77,14 @@
     const isFirebaseConfigured = !firebaseConfig.apiKey.includes("MASUKKAN");
     const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
     const auth = app ? getAuth(app) : null;
-    const db = app ? getFirestore(app) : null;
+    const db = app ? initializeFirestore(app, { experimentalForceLongPolling: true }) : null;
     const storage = app ? getStorage(app) : null;
     const appId = 'media-analytics-bdg';
 
-    // 2. URL WEB APP GOOGLE SCRIPT
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzzklnJMSsLK5BxOkYWXaLHNLKY6VEmMj2uMROVtXwqpfVOZeXquVs_S1fK9UGMqPU1Mg/exec';
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzaia1vrwDGIIarTC1u0YXaHWA_-1Lz-LgH0SsR0H-o65o7T9OdYfJcNqjBte3NJQmDCA/exec';
 
-    // 3. API KEY GNEWS
-    const GNEWS_API_KEY = '094e65d34c1a45eaf46aba2a2bde6269';
+    // MASUKKAN API KEY OPENAI ANDA DI BAWAH INI
+    const OPENAI_API_KEY = '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';
 
     const LEADING_SECTORS = [
       "Inspektorat", "Badan Perencanaan Pembangunan Riset dan Inovasi Daerah", "Badan Kepegawaian dan Pengembangan Sumber Daya Manusia", 
@@ -111,15 +109,16 @@
     ];
 
     const ISSUE_CATEGORIES = [
-      "Birokrasi", "Infrastruktur", "Lingkungan", "Ketertiban", "Keamanan", 
+      "Birokrasi", "Pelayanan", "Infrastruktur", "Lingkungan", "Ketertiban", "Keamanan", 
       "Sosial", "Ekonomi", "Budaya", "Pendidikan", "Kesehatan", "Lainnya"
     ];
 
-    const COLORS = {
-      Positif: '#10b981',
-      Negatif: '#ef4444',
-      Netral: '#f59e0b'
-    };
+    const PRINT_MEDIA_NAMES = [
+      "Kompas", "Pikiran Rakyat", "Jabar Ekspres", "Inilah Koran", "Tribun Jabar", 
+      "Galamedia", "Radar Bandung", "Lainnya"
+    ];
+
+    const COLORS = { Positif: '#10b981', Negatif: '#ef4444', Netral: '#f59e0b' };
 
     function AuthScreen({ onLogin, setGlobalRole, setGlobalProfile, showToast }) {
       const [isLogin, setIsLogin] = useState(true);
@@ -129,20 +128,17 @@
       const [agency, setAgency] = useState(LEADING_SECTORS[0]);
       const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
-      const [adminCode, setAdminCode] = useState('');
+      const [accessCode, setAccessCode] = useState(''); // Unified access code
       const [loading, setLoading] = useState(false);
 
       const recordToGoogleSheet = async (userEmail, userRole, userName = '', userAgency = '') => {
-        if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("MASUKKAN_URL")) return;
+        if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("MASUKKAN")) return;
         try {
           await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'recordUser', email: userEmail, role: userRole, name: userName, agency: userAgency })
           });
-        } catch (err) {
-          console.error("Gagal mencatat ke Google Sheet:", err);
-        }
+        } catch (err) { console.error(err); }
       };
 
       const handleResetPassword = async (e) => {
@@ -153,11 +149,7 @@
           await sendPasswordResetEmail(auth, email);
           showToast("Tautan reset password telah dikirim ke email Anda", "success");
           setIsForgotPassword(false);
-        } catch (error) {
-          showToast(error.message, "error");
-        } finally {
-          setLoading(false);
-        }
+        } catch (error) { showToast(error.message, "error"); } finally { setLoading(false); }
       };
 
       const handleSubmit = async (e) => {
@@ -167,25 +159,27 @@
           if (isLogin) {
             await signInWithEmailAndPassword(auth, email, password);
           } else {
-            if (regRole === 'admin' && adminCode !== 'PROKOPIM2026') {
-              showToast("Kode admin salah!", "error"); setLoading(false); return;
+            // Role-based Access Code Validation
+            if (regRole === 'admin' && accessCode !== '@prokopim2026') {
+              showToast("Kode akses admin salah!", "error"); setLoading(false); return;
             }
+            if ((regRole === 'pd' || regRole === 'pimpinan') && accessCode !== 'PROKOPIM2026') {
+              showToast("Kode akses salah!", "error"); setLoading(false); return;
+            }
+
             if ((regRole === 'pd' || regRole === 'pimpinan') && !name) {
               showToast("Nama lengkap harus diisi!", "error"); setLoading(false); return;
             }
 
             const userCred = await createUserWithEmailAndPassword(auth, email, password);
-            const userDocRef = doc(db, 'artifacts', appId, 'users', userCred.user.uid, 'profile', 'info');
-            
             const profileData = {
-              email: userCred.user.email,
-              role: regRole,
+              email: userCred.user.email, role: regRole,
               name: regRole === 'admin' ? 'Admin Prokopim' : name,
               agency: regRole === 'pd' ? agency : (regRole === 'pimpinan' ? 'Pimpinan Daerah' : 'Sekretariat Daerah'),
               createdAt: new Date().toISOString()
             };
-
-            await setDoc(userDocRef, profileData);
+            
+            await setDoc(doc(db, 'artifacts', appId, 'users', userCred.user.uid, 'profile', 'info'), profileData);
             await recordToGoogleSheet(email, regRole, profileData.name, profileData.agency);
             
             setGlobalRole(regRole);
@@ -194,80 +188,68 @@
           }
         } catch (error) {
           let msg = error.message;
-          if (error.code === 'auth/email-already-in-use') {
-            msg = 'Email sudah terdaftar. Mengalihkan ke Login...';
-            setIsLogin(true);
-          } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-            msg = 'Email atau password salah, atau akun belum terdaftar.';
-          }
+          if (error.code === 'auth/email-already-in-use') { msg = 'Email sudah terdaftar. Silakan pindah ke menu Login.'; setIsLogin(true); }
+          else if (error.code === 'auth/invalid-credential') msg = 'Email atau password salah.';
           showToast(msg, "error");
-        } finally {
-          setLoading(false);
-        }
+        } finally { setLoading(false); }
       };
 
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
-          <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
           <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md relative z-10 border border-slate-100">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-emerald-400 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <LayoutDashboard className="text-white w-8 h-8" />
+              <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-emerald-400 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-blue-500/30 transform rotate-3">
+                <LayoutDashboard className="text-white w-8 h-8 -rotate-3" />
               </div>
               <h2 className="text-2xl font-bold text-slate-800">Media Monitoring</h2>
               <p className="text-slate-500 text-sm mt-1">Pemerintah Kota Bandung</p>
             </div>
 
             {isForgotPassword ? (
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                <h3 className="text-lg font-bold text-center text-slate-800 mb-2">Reset Password</h3>
-                <p className="text-sm text-center text-slate-500 mb-4">Masukkan email Anda untuk mereset password.</p>
-                <div>
-                  <input type="email" required className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Anda"/>
-                </div>
-                <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg flex justify-center">
-                  {loading ? <Loader2 className="animate-spin" /> : 'Kirim Link Reset'}
-                </button>
-                <div className="mt-4 text-center text-sm"><button type="button" onClick={() => setIsForgotPassword(false)} className="font-bold text-slate-600">Kembali ke Login</button></div>
-              </form>
+               <form onSubmit={handleResetPassword} className="space-y-4">
+                  <h3 className="text-lg font-bold text-center text-slate-800 mb-2">Reset Password</h3>
+                  <p className="text-sm text-center text-slate-500 mb-4">Masukkan email Anda untuk menerima tautan reset password.</p>
+                  <input type="email" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Anda" />
+                  <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex justify-center">{loading ? <Loader2 className="animate-spin" /> : 'Kirim Link Reset'}</button>
+                  <button type="button" onClick={() => setIsForgotPassword(false)} className="w-full text-sm font-bold text-slate-600 mt-2">Kembali ke Login</button>
+               </form>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {!isLogin && (
-                  <div className="flex bg-slate-100 p-1 rounded-xl mb-4 gap-1">
-                    <button type="button" onClick={() => setRegRole('pd')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'pd' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Perangkat Daerah</button>
-                    <button type="button" onClick={() => setRegRole('pimpinan')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'pimpinan' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Pimpinan</button>
-                    <button type="button" onClick={() => setRegRole('admin')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'admin' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Admin</button>
-                  </div>
-                )}
+               <form onSubmit={handleSubmit} className="space-y-4">
+                 {!isLogin && (
+                    <div className="flex bg-slate-100 p-1 rounded-xl mb-4 gap-1">
+                      <button type="button" onClick={() => setRegRole('pd')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'pd' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Perangkat Daerah</button>
+                      <button type="button" onClick={() => setRegRole('pimpinan')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'pimpinan' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Pimpinan</button>
+                      <button type="button" onClick={() => setRegRole('admin')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'admin' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Admin</button>
+                    </div>
+                 )}
 
-                {!isLogin && (regRole === 'pd' || regRole === 'pimpinan') && (
-                  <div><input type="text" required className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500" value={name} onChange={e => setName(e.target.value)} placeholder="Nama Lengkap" /></div>
-                )}
-                {!isLogin && regRole === 'pd' && (
-                  <div>
-                    <select required className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500 bg-white" value={agency} onChange={e => setAgency(e.target.value)}>
-                      {LEADING_SECTORS.map(sec => <option key={sec} value={sec}>{sec}</option>)}
-                    </select>
-                  </div>
-                )}
+                 {!isLogin && (regRole === 'pd' || regRole === 'pimpinan') && (
+                    <div><input type="text" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={name} onChange={e => setName(e.target.value)} placeholder="Nama Lengkap" /></div>
+                 )}
+                 {!isLogin && regRole === 'pd' && (
+                    <div>
+                      <select required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500 bg-white" value={agency} onChange={e => setAgency(e.target.value)}>
+                        {LEADING_SECTORS.map(sec => <option key={sec} value={sec}>{sec}</option>)}
+                      </select>
+                    </div>
+                 )}
 
-                <div><input type="email" required className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@bandung.go.id" /></div>
-                <div><input type="password" required className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" /></div>
-                
-                {!isLogin && regRole === 'admin' && (
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-2">
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Kode Admin</label>
-                    <input type="password" required className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-emerald-500" value={adminCode} onChange={e => setAdminCode(e.target.value)} placeholder="Kode Akses" />
-                  </div>
-                )}
+                 <div><input type="email" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@bandung.go.id" /></div>
+                 <div><input type="password" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" /></div>
+                 
+                 {!isLogin && (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-blue-100 mt-2">
+                       <label className="block text-[11px] font-bold text-slate-700 mb-1">Kode Akses Registrasi</label>
+                       <input type="password" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder={regRole === 'admin' ? "Kode Akses" : "Kode Akses"} />
+                    </div>
+                 )}
 
-                {isLogin && (<div className="flex justify-end"><button type="button" onClick={() => setIsForgotPassword(true)} className="text-sm font-medium text-blue-600 hover:underline">Lupa Password?</button></div>)}
-
-                <button type="submit" disabled={loading} className="w-full py-3.5 mt-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg flex justify-center">{loading ? <Loader2 className="animate-spin" /> : (isLogin ? 'Login' : 'Registrasi')}</button>
-              </form>
+                 {isLogin && (<div className="text-right"><button type="button" onClick={() => setIsForgotPassword(true)} className="text-xs text-blue-600 font-bold hover:underline">Lupa Password?</button></div>)}
+                 <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex justify-center shadow-lg">{loading ? <Loader2 className="animate-spin" /> : (isLogin ? 'Login' : 'Registrasi')}</button>
+               </form>
             )}
 
             {!isForgotPassword && (
@@ -320,8 +302,10 @@
             sectorCount[sector] = (sectorCount[sector] || 0) + 1;
           });
 
-          const cat = i.issueCategory || 'Belum Dikategorikan';
-          categoryIssueCount[cat] = (categoryIssueCount[cat] || 0) + 1;
+          const categories = i.issueCategories || (i.issueCategory ? [i.issueCategory] : ['Belum Dikategorikan']);
+          categories.forEach(cat => {
+            categoryIssueCount[cat] = (categoryIssueCount[cat] || 0) + 1;
+          });
         });
 
         const statusData = [
@@ -338,7 +322,6 @@
 
       return (
         <div className="space-y-6">
-          {/* Filter Tanggal Dashboard */}
           <div className="flex flex-wrap items-center justify-between bg-white p-5 rounded-2xl shadow-sm border border-slate-100 gap-4">
              <h2 className="font-bold text-slate-800 text-lg flex items-center"><Activity className="mr-2 text-blue-600"/> Ringkasan Dashboard</h2>
              <div className="flex items-center gap-3">
@@ -366,13 +349,12 @@
               <div className="w-14 h-14 bg-pink-50 text-pink-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform"><Newspaper size={24} /></div>
               <div><p className="text-slate-500 text-sm font-medium">Media Cetak</p><p className="text-2xl font-bold text-slate-800">{stats.print}</p></div>
             </div>
-            <div onClick={() => setActiveTab('dashboard')} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center cursor-pointer hover:shadow-md hover:border-blue-200 transition-all group">
-              <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mr-4 group-hover:scale-110 transition-transform"><Activity size={24} /></div>
+            <div onClick={() => setActiveTab('dashboard')} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center">
+              <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mr-4"><Activity size={24} /></div>
               <div><p className="text-slate-500 text-sm font-medium">Total Isu</p><p className="text-2xl font-bold text-slate-800">{stats.total}</p></div>
             </div>
           </div>
 
-          {/* Baris Kedua: Kategori Isu (BarChart) & Status Penanganan (PieChart) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2">
               <h3 className="font-bold text-slate-800 mb-6 flex items-center"><BarChart2 className="mr-2 text-slate-400" /> Distribusi Kategori Isu</h3>
@@ -409,7 +391,6 @@
             </div>
           </div>
 
-          {/* Baris Ketiga: Perangkat Daerah, Sentimen, dan Isu Terbaru */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[400px]">
               <h3 className="font-bold text-slate-800 mb-4 flex items-center"><Building className="mr-2 text-slate-400" size={18}/> Rekap Perangkat Daerah</h3>
@@ -446,7 +427,7 @@
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[400px]">
               <h3 className="font-bold text-slate-800 mb-4 flex items-center"><Calendar className="mr-2 text-slate-400" size={18} /> Isu Terbaru</h3>
               <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
-                {filteredIssues.slice(0, 10).map(issue => (
+                {[...filteredIssues].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 5).map(issue => (
                   <div key={issue.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:shadow-sm transition-shadow">
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">{issue.sourceType}</span>
@@ -469,40 +450,47 @@
 
     function DataTableView({ title, type, issues, onAdd, onEdit, onDelete, role, onView, onFetchNews, isFetchingNews }) {
       const [searchTerm, setSearchTerm] = useState('');
-      
+      const [filterDate, setFilterDate] = useState('');
+      const [filterSector, setFilterSector] = useState('');
+
       const filteredIssues = issues.filter(issue => {
-        const sectorsStr = (issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ');
-        return issue.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-               sectorsStr.toLowerCase().includes(searchTerm.toLowerCase());
+        let matches = true;
+        if (filterDate && issue.date !== filterDate) matches = false;
+        
+        const sectors = issue.leadingSectors || (issue.leadingSector ? [issue.leadingSector] : []);
+        if (filterSector && !sectors.includes(filterSector)) matches = false;
+        
+        if (searchTerm && !issue.title.toLowerCase().includes(searchTerm.toLowerCase())) matches = false;
+        return matches;
       });
+
+      // Mengurutkan berdasarkan tanggal terbaru dan membatasi maksimal 10 data
+      const sortedIssues = [...filteredIssues].sort((a, b) => {
+        const dateA = new Date(a.date || 0);
+        const dateB = new Date(b.date || 0);
+        return dateB - dateA;
+      }).slice(0, 10);
 
       return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full">
-          <div className="p-6 border-b border-slate-100 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sticky top-0 z-10">
+          <div className="p-6 border-b border-slate-100 bg-white flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sticky top-0 z-10">
             <div>
               <h2 className="text-xl font-bold text-slate-800">{title}</h2>
-              <p className="text-sm text-slate-500 mt-1">Total {issues.length} data tersimpan</p>
+              <p className="text-sm text-slate-500 mt-1">Total {sortedIssues.length} data ditampilkan</p>
             </div>
-            <div className="flex flex-wrap w-full sm:w-auto items-center gap-3">
-              <div className="relative flex-1 sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input type="text" placeholder="Cari judul atau sektor..." 
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                  value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <div className="flex flex-col xl:flex-row w-full xl:w-auto items-start xl:items-center gap-3">
+              <div className="flex flex-col sm:flex-row w-full gap-2">
+                <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm w-full sm:w-auto cursor-pointer" title="Filter berdasarkan tanggal" />
+                <select value={filterSector} onChange={(e) => setFilterSector(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm w-full sm:max-w-[180px] truncate cursor-pointer bg-white" title="Filter berdasarkan perangkat daerah">
+                  <option value="">Semua Perangkat Daerah</option>
+                  {LEADING_SECTORS.map(sec => <option key={sec} value={sec}>{sec}</option>)}
+                </select>
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input type="text" placeholder="Cari judul isu..." className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                </div>
               </div>
-              {role === 'admin' && (
-                <>
-                  {type === 'Media Online' && onFetchNews && (
-                    <button onClick={onFetchNews} disabled={isFetchingNews} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center">
-                      {isFetchingNews ? <Loader2 size={18} className="animate-spin mr-1.5" /> : <Globe size={18} className="mr-1.5" />}
-                      {isFetchingNews ? 'Menarik...' : 'Tarik Berita'}
-                    </button>
-                  )}
-                  <button onClick={onAdd} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 transition-all flex items-center">
-                    <Plus size={18} className="mr-1.5" /> Tambah
-                  </button>
-                </>
-              )}
+              {role === 'admin' && (<button onClick={onAdd} className="w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center justify-center shrink-0"><Plus size={16} className="mr-1.5" /> Tambah</button>)}
             </div>
           </div>
 
@@ -510,16 +498,16 @@
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
-                  <th className="p-4 font-semibold rounded-tl-lg">Tanggal</th>
-                  <th className="p-4 font-semibold">Judul Isu</th>
-                  <th className="p-4 font-semibold">Leading Sector</th>
-                  <th className="p-4 font-semibold text-center">Sentimen</th>
-                  <th className="p-4 font-semibold text-center">Status</th>
-                  <th className="p-4 font-semibold text-right rounded-tr-lg">Aksi</th>
+                  <th className="p-4 font-bold rounded-tl-lg">Tanggal</th>
+                  <th className="p-4 font-bold">Judul Isu</th>
+                  <th className="p-4 font-bold">Leading Sector</th>
+                  <th className="p-4 font-bold text-center">Sentimen</th>
+                  <th className="p-4 font-bold text-center">Status</th>
+                  <th className="p-4 font-bold text-right rounded-tr-lg">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredIssues.map((issue) => (
+                {sortedIssues.map((issue) => (
                   <tr key={issue.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="p-4 text-slate-600">{issue.date}</td>
                     <td className="p-4 font-medium text-slate-800 max-w-[250px] truncate" title={issue.title}>{issue.title}</td>
@@ -527,16 +515,10 @@
                         {(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}
                     </td>
                     <td className="p-4 text-center">
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${
-                        issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' :
-                        issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                      }`}>{issue.sentiment}</span>
+                       <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
                     </td>
                     <td className="p-4 text-center">
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${
-                        issue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' :
-                        issue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
-                      }`}>{issue.status || 'Belum Ditangani'}</span>
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${issue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : issue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{issue.status || 'Belum Ditangani'}</span>
                     </td>
                     <td className="p-4 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button onClick={() => onView(issue)} className="p-2 text-slate-400 hover:text-blue-600 rounded-lg mr-1"><Eye size={16} /></button>
@@ -549,9 +531,7 @@
                     </td>
                   </tr>
                 ))}
-                {filteredIssues.length === 0 && (
-                  <tr><td colSpan="6" className="p-8 text-center text-slate-500">Tidak ada data.</td></tr>
-                )}
+                {sortedIssues.length === 0 && (<tr><td colSpan="6" className="p-8 text-center text-slate-500">Tidak ada data.</td></tr>)}
               </tbody>
             </table>
           </div>
@@ -561,10 +541,12 @@
 
     function AnalysisView({ issues, role, agency, onAnalyze, analyzingId, onView, onPublishToggle, onEditAnalysis, onDelete, onDownloadAll, onDownloadRecap }) {
       const [filterPeriod, setFilterPeriod] = useState('all');
+      const [filterDate, setFilterDate] = useState('');
       const [filterMedia, setFilterMedia] = useState('');
 
       const issuesForAnalysis = issues.filter(issue => {
         if (role !== 'admin' && role !== 'pimpinan' && !issue.analysisPublished) return false;
+        if (filterDate && issue.date !== filterDate) return false;
         if (filterMedia && issue.sourceType !== filterMedia) return false;
         
         if (filterPeriod !== 'all' && issue.date) {
@@ -628,7 +610,7 @@
               return (
                 <div key={issue.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow flex flex-col relative overflow-hidden">
                   {!issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-amber-100 text-amber-700 text-[10px] font-bold px-3 py-1 rounded-bl-lg">DRAFT</div>}
-                  {issue.analysisPublished && <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-bl-lg">PUBLISHED</div>}
+                  {issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-bl-lg">PUBLISHED</div>}
                   
                   <div className="flex justify-between items-center mb-3 mt-2">
                     <div className="flex gap-2">
@@ -704,10 +686,9 @@
           sourceType: type,
           title: '', date: new Date().toISOString().split('T')[0],
           sentiment: 'Netral', leadingSector: LEADING_SECTORS[0],
-          issueCategory: 'Birokrasi',
           platform: '', postType: '', account: '', link: '', caption: '',
           domain: '', content: '',
-          printType: '', mediaName: '', comments: []
+          printType: 'Koran', mediaName: PRINT_MEDIA_NAMES[0], customMediaName: '', comments: []
         };
         
         let defaultPostType = defaultData.postType || 'Post Foto/Video/Teks';
@@ -718,11 +699,15 @@
         const initialCat = defaultData.issueCategory || 'Birokrasi';
         const isCustomCat = !ISSUE_CATEGORIES.includes(initialCat) && initialCat !== 'Lainnya';
 
+        const initialMedia = defaultData.mediaName || PRINT_MEDIA_NAMES[0];
+        const isCustomMedia = !PRINT_MEDIA_NAMES.includes(initialMedia) && initialMedia !== 'Lainnya';
+
         return {
           ...defaultData,
           leadingSectors: defaultData.leadingSectors || (defaultData.leadingSector ? [defaultData.leadingSector] : [LEADING_SECTORS[0]]),
-          issueCategory: isCustomCat ? 'Lainnya' : initialCat,
-          customIssueCategory: isCustomCat ? initialCat : '',
+          issueCategories: defaultData.issueCategories || (defaultData.issueCategory ? [defaultData.issueCategory] : [ISSUE_CATEGORIES[0]]),
+          mediaName: isCustomMedia ? 'Lainnya' : initialMedia,
+          customMediaName: isCustomMedia ? initialMedia : '',
           links: defaultData.links || (defaultData.link ? [defaultData.link] : ['']),
           domains: defaultData.domains || (defaultData.domain ? [defaultData.domain] : ['']),
           platforms: defaultData.platforms || (defaultData.platform ? [defaultData.platform] : ['Instagram']),
@@ -769,9 +754,12 @@
 
       const handleSubmit = (e) => {
         e.preventDefault();
-        const finalCategory = formData.issueCategory === 'Lainnya' ? formData.customIssueCategory : formData.issueCategory;
-        const dataToSave = { ...formData, issueCategory: finalCategory };
-        delete dataToSave.customIssueCategory;
+        const dataToSave = { ...formData };
+        if (type === 'Media Cetak') {
+            dataToSave.mediaName = formData.mediaName === 'Lainnya' ? formData.customMediaName : formData.mediaName;
+            delete dataToSave.customMediaName;
+            delete dataToSave.links; // Pastikan link tidak disimpan untuk media cetak
+        }
         onSave(dataToSave, file);
       };
 
@@ -799,15 +787,28 @@
               <div><label className="block text-sm font-medium text-slate-700 mb-1">Judul Isu</label><input type="text" name="title" required value={formData.title} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl outline-none" /></div>
               
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <div className="flex flex-col gap-2">
-                      <label className="text-xs font-bold text-slate-700">Kategori Isu</label>
-                      <select name="issueCategory" value={formData.issueCategory} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white">
-                          {ISSUE_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                      </select>
-                      {formData.issueCategory === 'Lainnya' && (
-                          <input type="text" name="customIssueCategory" value={formData.customIssueCategory} onChange={handleChange} placeholder="Tuliskan kategori secara spesifik..." className="w-full px-3 py-2 text-sm border rounded-xl outline-none" required />
-                      )}
+                  <div className="flex justify-between items-center mb-3">
+                      <label className="text-xs font-bold text-slate-700">Kategori Isu (Bisa Lebih Dari Satu)</label>
+                      <button type="button" onClick={() => addArrayItem('issueCategories', ISSUE_CATEGORIES[0])} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200 transition-colors">+ Tambah Kategori</button>
                   </div>
+                  {(formData.issueCategories || []).map((cat, i) => (
+                      <div key={i} className="flex gap-2 mb-2">
+                          <div className="flex-1 flex flex-col gap-2">
+                              <select value={ISSUE_CATEGORIES.includes(cat) ? cat : 'Lainnya'} onChange={(e) => {
+                                  const val = e.target.value;
+                                  handleArrayChange('issueCategories', i, val === 'Lainnya' ? '' : val);
+                              }} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white">
+                                  {ISSUE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                              {!ISSUE_CATEGORIES.includes(cat) && (
+                                  <input type="text" value={cat} onChange={(e) => handleArrayChange('issueCategories', i, e.target.value)} placeholder="Tuliskan kategori..." className="w-full px-3 py-2 text-sm border rounded-xl outline-none" required />
+                              )}
+                          </div>
+                          {(formData.issueCategories || []).length > 1 && (
+                              <button type="button" onClick={() => removeArrayItem('issueCategories', i)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors h-[38px]" title="Hapus"><X size={16}/></button>
+                          )}
+                      </div>
+                  ))}
               </div>
 
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -968,24 +969,17 @@
               )}
               {type === 'Media Cetak' && (
                  <>
-                   <div className="grid grid-cols-2 gap-4">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div><label className="block text-sm font-medium text-slate-700 mb-1">Jenis Media</label><select name="printType" value={formData.printType} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl bg-white"><option value="Koran">Koran</option><option value="Majalah">Majalah</option></select></div>
-                     <div><label className="block text-sm font-medium text-slate-700 mb-1">Nama Media</label><input type="text" name="mediaName" value={formData.mediaName} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl" /></div>
-                   </div>
-                   
-                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                      <div className="flex justify-between items-center mb-3">
-                          <label className="text-xs font-bold text-slate-700">Link Digital (Opsional)</label>
-                          <button type="button" onClick={() => addArrayItem('links', '')} className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200">+ Tambah Link</button>
-                      </div>
-                      {(formData.links || [formData.link || '']).map((link, i) => (
-                          <div key={i} className="flex gap-2 mb-2">
-                              <input type="url" value={link} onChange={(e) => handleArrayChange('links', i, e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" placeholder="https://..." />
-                              {(formData.links || []).length > 1 && (
-                                  <button type="button" onClick={() => removeArrayItem('links', i)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg"><X size={16}/></button>
-                              )}
-                          </div>
-                      ))}
+                     <div className="flex flex-col gap-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Nama Media</label>
+                        <select name="mediaName" value={formData.mediaName} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white">
+                            {PRINT_MEDIA_NAMES.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                        {formData.mediaName === 'Lainnya' && (
+                            <input type="text" name="customMediaName" value={formData.customMediaName} onChange={handleChange} placeholder="Tuliskan nama media..." className="w-full px-3 py-2 text-sm border rounded-xl outline-none" required />
+                        )}
+                     </div>
                    </div>
 
                    <div><label className="block text-sm font-medium text-slate-700 mb-1">Isi Berita</label><textarea name="content" rows="4" value={formData.content} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl outline-none"></textarea></div>
@@ -1269,7 +1263,7 @@
             if (!issues.some(i => i.title.toLowerCase() === article.title.toLowerCase())) {
               await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), {
                 sourceType: 'Media Online', title: article.title, date: article.publishedAt.split('T')[0], domain: article.source.name,
-                link: article.url, content: article.description, sentiment: 'Netral', leadingSector: 'Lainnya', issueCategory: 'Lainnya', status: 'Belum Ditangani', createdAt: new Date().toISOString()
+                link: article.url, content: article.description, sentiment: 'Netral', leadingSector: 'Lainnya', issueCategories: ['Lainnya'], status: 'Belum Ditangani', createdAt: new Date().toISOString()
               });
               added++;
             }
@@ -1293,28 +1287,27 @@
           const sectorsStr = (issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ');
           
           let additionalContext = '';
-          let instructionContext = '';
           if (issue.sourceType === 'Media Sosial') {
               let commentsStr = (issue.comments || []).map((c, i) => `${i+1}. [${c.sentiment}] @${c.account || 'anonim'}: ${c.content}`).join('\n');
               if (commentsStr) {
                   additionalContext = `\n\nKomentar Netizen:\n${commentsStr}`;
-                  instructionContext = ` Khusus untuk isu media sosial ini, berikan analisis yang mempertimbangkan baik isi postingan (caption) maupun pola respon/sentimen komentar netizen yang ada.`;
               }
           }
 
+          // PROMPT AI SUPER KETAT
           const prompt = `Sebagai analis kebijakan ahli Pemerintah Kota Bandung, analisislah isu berikut:
 Judul: ${issue.title}
-Kategori Isu: ${issue.issueCategory || '-'}
+Kategori Isu: ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}
 Detail: ${issue.content || issue.caption || 'Tidak ada detail'}
 Sektor: ${sectorsStr}${additionalContext}
 
 Tugas Anda:
-1. Buat 'analysis' (Analisis Isu) mendalam (2 paragraf) tentang akar masalah dan dampaknya.${instructionContext}
-2. Buat 'policyRecommendation' (Rekomendasi Kebijakan) untuk Pemkot Bandung di era kepemimpinan Muhammad Farhan. Buat dalam daftar bernomor. Setiap poin WAJIB diawali dengan kata kerja "Me...".
-3. Buat 'publicationRecommendation' (Rekomendasi Publikasi). Buat dalam daftar bernomor. Setiap poin WAJIB diawali dengan kata kerja "Me...".
+1. Buat 'analysis' (Analisis Isu) SECARA DESKRIPTIF PERSIS DUA PARAGRAF. Paragraf 1: Menjelaskan konteks isu secara komprehensif berdasarkan informasi atau komentar netizen yang diinputkan. Paragraf 2: Menjelaskan secara tegas dampak dari isu tersebut jika tidak segera ditindaklanjuti oleh Pemerintah Kota Bandung. Gunakan karakter newline (\\n\\n) untuk memisahkan kedua paragraf tersebut.
+2. Buat 'policyRecommendation' (Rekomendasi Kebijakan) operasional untuk Pemkot Bandung. WAJIB berupa daftar bernomor (1., 2., dst) yang setiap angkanya dipisahkan dengan baris baru (newline). Setiap poin daftar WAJIB diawali dengan kata kerja berawalan "Me...".
+3. Buat 'publicationRecommendation' (Rekomendasi Publikasi) untuk Humas. WAJIB berupa daftar bernomor (1., 2., dst) yang setiap angkanya dipisahkan dengan baris baru (newline). Setiap poin daftar WAJIB diawali dengan kata kerja berawalan "Me...".
 
 Format KELUARAN HARUS berupa JSON murni dengan struktur: 
-{"analysis": "...", "policyRecommendation": "1. Me...\\n2. Me...", "publicationRecommendation": "1. Me...\\n2. Me..."}`;
+{"analysis": "Paragraf 1...\\n\\nParagraf 2...", "policyRecommendation": "1. Me...\\n2. Me...", "publicationRecommendation": "1. Me...\\n2. Me..."}`;
 
           let aiResult = null;
           
@@ -1395,8 +1388,24 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
             return;
         }
         
-        // Mempersiapkan akun/sumber text
-        const accountStr = (issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-';
+        let mediaInfo = '';
+        if (issue.sourceType === 'Media Cetak') {
+            mediaInfo = `
+                <tr><td style="font-weight: bold; vertical-align: top;">Jenis Media</td><td style="vertical-align: top;">: ${issue.printType || '-'}</td></tr>
+                <tr><td style="font-weight: bold; vertical-align: top;">Nama Media</td><td style="vertical-align: top;">: ${issue.mediaName || '-'}</td></tr>
+            `;
+        } else if (issue.sourceType === 'Media Online') {
+            mediaInfo = `
+                <tr><td style="font-weight: bold; vertical-align: top;">Domain</td><td style="vertical-align: top;">: ${(issue.domains || [issue.domain]).filter(Boolean).join(', ') || '-'}</td></tr>
+                <tr><td style="font-weight: bold; vertical-align: top;">Tautan / Link</td><td style="vertical-align: top;">: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+            `;
+        } else {
+            mediaInfo = `
+                <tr><td style="font-weight: bold; vertical-align: top;">Platform</td><td style="vertical-align: top;">: ${(issue.platforms || [issue.platform]).filter(Boolean).join(', ') || '-'}</td></tr>
+                <tr><td style="font-weight: bold; vertical-align: top;">Akun Sumber</td><td style="vertical-align: top;">: ${(issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-'}</td></tr>
+                <tr><td style="font-weight: bold; vertical-align: top;">Tautan / Link</td><td style="vertical-align: top;">: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+            `;
+        }
         
         const content = document.createElement('div');
         content.innerHTML = `
@@ -1413,11 +1422,9 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
                 <table class="pdf-table">
                     <tr><td style="width: 130px; font-weight: bold; vertical-align: top;">Judul</td><td style="vertical-align: top;">: ${issue.title}</td></tr>
                     <tr><td style="font-weight: bold; vertical-align: top;">Tanggal</td><td style="vertical-align: top;">: ${issue.date}</td></tr>
-                    <tr><td style="font-weight: bold; vertical-align: top;">Kategori Isu</td><td style="vertical-align: top;">: ${issue.issueCategory || '-'}</td></tr>
+                    <tr><td style="font-weight: bold; vertical-align: top;">Kategori Isu</td><td style="vertical-align: top;">: ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}</td></tr>
                     <tr><td style="font-weight: bold; vertical-align: top;">Media</td><td style="vertical-align: top;">: ${issue.sourceType}</td></tr>
-                    <tr><td style="font-weight: bold; vertical-align: top;">Platform</td><td style="vertical-align: top;">: ${(issue.platforms || [issue.platform]).filter(Boolean).join(', ') || '-'}</td></tr>
-                    <tr><td style="font-weight: bold; vertical-align: top;">Akun Sumber</td><td style="vertical-align: top;">: ${accountStr}</td></tr>
-                    <tr><td style="font-weight: bold; vertical-align: top;">Tautan / Link</td><td style="vertical-align: top;">: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                    ${mediaInfo}
                     <tr><td style="font-weight: bold; vertical-align: top;">Leading Sector</td><td style="vertical-align: top;">: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
                 </table>
                 
@@ -1436,7 +1443,6 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
             </div>
         `;
         
-        // Memakai margin dan pagebreak avoidance untuk mencegah text terpotong di akhir halaman
         window.html2pdf().from(content).set({
             margin: [15, 15, 15, 15],
             filename: `Analisis_${issue.title.substring(0, 20)}.pdf`,
@@ -1448,7 +1454,25 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
       };
 
       const handleDownloadWord = (issue) => {
-          const accountStr = (issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-';
+          let mediaInfo = '';
+          if (issue.sourceType === 'Media Cetak') {
+              mediaInfo = `
+                  <tr><td style="font-weight: bold;">Jenis Media</td><td>: ${issue.printType || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Nama Media</td><td>: ${issue.mediaName || '-'}</td></tr>
+              `;
+          } else if (issue.sourceType === 'Media Online') {
+              mediaInfo = `
+                  <tr><td style="font-weight: bold;">Domain</td><td>: ${(issue.domains || [issue.domain]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+              `;
+          } else {
+              mediaInfo = `
+                  <tr><td style="font-weight: bold;">Platform</td><td>: ${(issue.platforms || [issue.platform]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Akun Sumber</td><td>: ${(issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+              `;
+          }
+
           const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML to Word</title></head><body>";
           const footer = "</body></html>";
           const content = `
@@ -1456,10 +1480,9 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
               <table style="width: 100%; margin-bottom: 20px; font-size: 14px;">
                   <tr><td style="width: 130px; font-weight: bold;">Judul</td><td>: ${issue.title}</td></tr>
                   <tr><td style="font-weight: bold;">Tanggal</td><td>: ${issue.date}</td></tr>
-                  <tr><td style="font-weight: bold;">Kategori Isu</td><td>: ${issue.issueCategory || '-'}</td></tr>
-                  <tr><td style="font-weight: bold;">Media / Platform</td><td>: ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}</td></tr>
-                  <tr><td style="font-weight: bold;">Akun Sumber</td><td>: ${accountStr}</td></tr>
-                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Kategori Isu</td><td>: ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}</td></tr>
+                  <tr><td style="font-weight: bold;">Media</td><td>: ${issue.sourceType}</td></tr>
+                  ${mediaInfo}
                   <tr><td style="font-weight: bold;">Leading Sector</td><td>: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
               </table>
               <br/>
@@ -1490,15 +1513,32 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
           let content = `<h1 style="text-align: center; color: #1e293b;">Rekapitulasi Laporan Analisis Isu</h1><br/>`;
 
           analyzedIssues.forEach((issue, index) => {
-              const accountStr = (issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-';
+              let mediaInfo = '';
+              if (issue.sourceType === 'Media Cetak') {
+                  mediaInfo = `
+                      <tr><td style="font-weight: bold;">Jenis Media</td><td>: ${issue.printType || '-'}</td></tr>
+                      <tr><td style="font-weight: bold;">Nama Media</td><td>: ${issue.mediaName || '-'}</td></tr>
+                  `;
+              } else if (issue.sourceType === 'Media Online') {
+                  mediaInfo = `
+                      <tr><td style="font-weight: bold;">Domain</td><td>: ${(issue.domains || [issue.domain]).filter(Boolean).join(', ') || '-'}</td></tr>
+                      <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  `;
+              } else {
+                  mediaInfo = `
+                      <tr><td style="font-weight: bold;">Platform</td><td>: ${(issue.platforms || [issue.platform]).filter(Boolean).join(', ') || '-'}</td></tr>
+                      <tr><td style="font-weight: bold;">Akun Sumber</td><td>: ${(issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-'}</td></tr>
+                      <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  `;
+              }
+
               content += `
               <h2 style="color: #1e293b;">${index + 1}. ${issue.title}</h2>
               <table style="width: 100%; margin-bottom: 20px; font-size: 14px;">
                   <tr><td style="width: 130px; font-weight: bold;">Tanggal</td><td>: ${issue.date}</td></tr>
-                  <tr><td style="font-weight: bold;">Kategori Isu</td><td>: ${issue.issueCategory || '-'}</td></tr>
-                  <tr><td style="font-weight: bold;">Media / Platform</td><td>: ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}</td></tr>
-                  <tr><td style="font-weight: bold;">Akun Sumber</td><td>: ${accountStr}</td></tr>
-                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Kategori Isu</td><td>: ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}</td></tr>
+                  <tr><td style="font-weight: bold;">Media</td><td>: ${issue.sourceType}</td></tr>
+                  ${mediaInfo}
                   <tr><td style="font-weight: bold;">Leading Sector</td><td>: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
               </table>
               <br/>
@@ -1616,7 +1656,7 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
         let text = `Yth. Bapak Wali Kota Bandung\ndi tempat.\n\nMohon izin menyampaikan terkait isu yang berkembang berkaitan dengan Pemerintah Kota Bandung, pada hari ${dateStr}.\n\n`;
         
         text += `*Ringkasan Isu:*\n${issue.title}\n`;
-        text += `*Kategori Isu:* ${issue.issueCategory || '-'}\n`;
+        text += `*Kategori Isu:* ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}\n`;
         
         const platforms = (issue.platforms || [issue.platform]).filter(Boolean);
         const accounts = (issue.accounts || [issue.account]).filter(Boolean);
@@ -1654,7 +1694,7 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
         { id: 'social', label: 'Media Sosial', icon: Share2 },
         { id: 'online', label: 'Media Online', icon: Globe },
         { id: 'print', label: 'Media Cetak', icon: Newspaper },
-        { id: 'analysis', label: 'Analisis Isu', icon: Brain }, // Icon diubah menjadi Brain
+        { id: 'analysis', label: 'Analisis Isu', icon: Brain },
       ];
 
       return (
@@ -1737,24 +1777,31 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
                           <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm">
                             <h4 className="font-bold text-blue-800 mb-4 flex items-center text-sm"><Share2 size={16} className="mr-2"/> Informasi Sumber & Sektor</h4>
                             <div className="space-y-3 text-sm text-slate-700">
-                               <p><strong>Media:</strong> {viewingIssue.sourceType} {viewingIssue.mediaName ? `(${viewingIssue.mediaName})` : ''}</p>
-                               <p><strong>Kategori Isu:</strong> {viewingIssue.issueCategory || 'Belum Dikategorikan'}</p>
-                               {viewingIssue.platforms && viewingIssue.platforms.filter(Boolean).length > 0 ? (
-                                  <p><strong>Platform:</strong> {viewingIssue.platforms.filter(Boolean).join(', ')}</p>
-                               ) : viewingIssue.platform && (
-                                  <p><strong>Platform:</strong> {viewingIssue.platform}</p>
+                               <p><strong>Media:</strong> {viewingIssue.sourceType}</p>
+                               {viewingIssue.sourceType === 'Media Cetak' && (
+                                  <>
+                                    <p><strong>Jenis Media:</strong> {viewingIssue.printType}</p>
+                                    <p><strong>Nama Media:</strong> {viewingIssue.mediaName}</p>
+                                  </>
+                               )}
+                               {viewingIssue.sourceType === 'Media Online' && (
+                                  <>
+                                    {viewingIssue.domains && viewingIssue.domains.filter(Boolean).length > 0 && (
+                                        <p><strong>Domain:</strong> {viewingIssue.domains.filter(Boolean).join(', ')}</p>
+                                    )}
+                                  </>
+                               )}
+                               {viewingIssue.sourceType === 'Media Sosial' && (
+                                  <>
+                                     {viewingIssue.platforms && viewingIssue.platforms.filter(Boolean).length > 0 && (
+                                        <p><strong>Platform:</strong> {viewingIssue.platforms.filter(Boolean).join(', ')}</p>
+                                     )}
+                                     {viewingIssue.accounts && viewingIssue.accounts.filter(Boolean).length > 0 && (
+                                        <p><strong>Akun Sumber:</strong> {viewingIssue.accounts.filter(Boolean).join(', ')}</p>
+                                     )}
+                                  </>
                                )}
                                
-                               {/* Perubahan: Menampilkan Akun Sumber */}
-                               {viewingIssue.accounts && viewingIssue.accounts.filter(Boolean).length > 0 ? (
-                                  <p><strong>Akun Sumber:</strong> {viewingIssue.accounts.filter(Boolean).join(', ')}</p>
-                               ) : viewingIssue.account && (
-                                  <p><strong>Akun Sumber:</strong> {viewingIssue.account}</p>
-                               )}
-
-                               {viewingIssue.domains && viewingIssue.domains.filter(Boolean).length > 0 && (
-                                  <p><strong>Domain:</strong> {viewingIssue.domains.filter(Boolean).join(', ')}</p>
-                               )}
                                {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).length > 0 && (
                                   <div>
                                       <strong>Tautan/Link:</strong>
@@ -1824,9 +1871,9 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
                               <div className="flex flex-wrap justify-between items-start mb-5 border-b border-amber-200 pb-4 gap-2">
                                  <h4 className="font-bold text-amber-900 flex items-center text-lg"><Brain className="mr-2 text-amber-600"/> Hasil Analisis & Rekomendasi</h4>
                                  <div className="flex gap-2">
-                                     <button onClick={() => handleDownloadWord(viewingIssue)} className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">DOCX</button>
-                                     <button onClick={() => handleDownloadPDF(viewingIssue)} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">PDF</button>
-                                     <button onClick={() => handleSendWA(viewingIssue)} className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded font-bold transition-colors shadow-sm flex items-center" title="Kirim Laporan via WhatsApp"><MessageCircle size={14}/></button>
+                                     <button onClick={() => handleDownloadWord(viewingIssue)} className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded font-bold transition-colors shadow-sm">DOCX</button>
+                                     <button onClick={() => handleDownloadPDF(viewingIssue)} className="text-[10px] bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded font-bold transition-colors shadow-sm">PDF</button>
+                                     <button onClick={() => handleSendWA(viewingIssue)} className="text-[10px] bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded font-bold transition-colors shadow-sm flex items-center" title="Kirim Laporan via WhatsApp"><MessageCircle size={12} className="mr-1"/> WA</button>
                                  </div>
                               </div>
                               
