@@ -40,15 +40,16 @@
     
     import { 
       LayoutDashboard, Share2, Globe, Newspaper, BrainCircuit, 
-      Menu, X, Search, Plus, Activity, LogOut, Upload, CheckCircle2,
-      Building, Image as ImageIcon, Loader2, Save, Trash2, Edit2, Eye, BarChart2, Calendar,
-      Filter, Send, Lock, Brain, Download, FileText, Bell, MessageCircle
+      Menu, X, Search, Plus, Calendar, BarChart2,
+      Activity, LogOut, ChevronRight, Upload, CheckCircle2,
+      AlertTriangle, Info, Building, FileText,
+      Link as LinkIcon, Image as ImageIcon, Loader2, Save, Trash2, Edit2, Eye,
+      Bell, MessageCircle, Brain, Download, Send, Lock, Filter, TrendingUp
     } from 'https://esm.sh/lucide-react@0.378.0?deps=react@18.3.1';
 
     import { 
-      ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell,
-      BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
-      AreaChart, Area, CartesianGrid
+      BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
+      ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell
     } from 'https://esm.sh/recharts@2.12.7?deps=react@18.3.1,react-dom@18.3.1';
 
     // CDN Firebase Resmi
@@ -83,7 +84,6 @@
 
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzaia1vrwDGIIarTC1u0YXaHWA_-1Lz-LgH0SsR0H-o65o7T9OdYfJcNqjBte3NJQmDCA/exec';
 
-    // MASUKKAN API KEY OPENAI ANDA DI BAWAH INI
     const OPENAI_API_KEY = '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';
 
     const LEADING_SECTORS = [
@@ -120,6 +120,10 @@
 
     const COLORS = { Positif: '#10b981', Negatif: '#ef4444', Netral: '#f59e0b' };
 
+    const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const WEEKS = ['1', '2', '3', '4', '5'];
+    const YEARS = ['2024', '2025', '2026', '2027', '2028', '2029', '2030'];
+
     function AuthScreen({ onLogin, setGlobalRole, setGlobalProfile, showToast }) {
       const [isLogin, setIsLogin] = useState(true);
       const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -128,7 +132,7 @@
       const [agency, setAgency] = useState(LEADING_SECTORS[0]);
       const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
-      const [accessCode, setAccessCode] = useState(''); // Unified access code
+      const [accessCode, setAccessCode] = useState(''); 
       const [loading, setLoading] = useState(false);
 
       const recordToGoogleSheet = async (userEmail, userRole, userName = '', userAgency = '') => {
@@ -159,14 +163,12 @@
           if (isLogin) {
             await signInWithEmailAndPassword(auth, email, password);
           } else {
-            // Role-based Access Code Validation
             if (regRole === 'admin' && accessCode !== '@prokopim2026') {
               showToast("Kode akses admin salah!", "error"); setLoading(false); return;
             }
             if ((regRole === 'pd' || regRole === 'pimpinan') && accessCode !== 'PROKOPIM2026') {
               showToast("Kode akses salah!", "error"); setLoading(false); return;
             }
-
             if ((regRole === 'pd' || regRole === 'pimpinan') && !name) {
               showToast("Nama lengkap harus diisi!", "error"); setLoading(false); return;
             }
@@ -209,47 +211,48 @@
             </div>
 
             {isForgotPassword ? (
-               <form onSubmit={handleResetPassword} className="space-y-4">
-                  <h3 className="text-lg font-bold text-center text-slate-800 mb-2">Reset Password</h3>
-                  <p className="text-sm text-center text-slate-500 mb-4">Masukkan email Anda untuk menerima tautan reset password.</p>
-                  <input type="email" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Anda" />
-                  <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex justify-center">{loading ? <Loader2 className="animate-spin" /> : 'Kirim Link Reset'}</button>
-                  <button type="button" onClick={() => setIsForgotPassword(false)} className="w-full text-sm font-bold text-slate-600 mt-2">Kembali ke Login</button>
-               </form>
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <h3 className="text-lg font-bold text-center text-slate-800 mb-2">Reset Password</h3>
+                <p className="text-sm text-center text-slate-500 mb-4">Masukkan email Anda untuk mereset password.</p>
+                <div><input type="email" required className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email Anda"/></div>
+                <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg flex justify-center">{loading ? <Loader2 className="animate-spin" /> : 'Kirim Link Reset'}</button>
+                <div className="mt-4 text-center text-sm"><button type="button" onClick={() => setIsForgotPassword(false)} className="font-bold text-slate-600">Kembali ke Login</button></div>
+              </form>
             ) : (
-               <form onSubmit={handleSubmit} className="space-y-4">
-                 {!isLogin && (
-                    <div className="flex bg-slate-100 p-1 rounded-xl mb-4 gap-1">
-                      <button type="button" onClick={() => setRegRole('pd')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'pd' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Perangkat Daerah</button>
-                      <button type="button" onClick={() => setRegRole('pimpinan')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'pimpinan' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Pimpinan</button>
-                      <button type="button" onClick={() => setRegRole('admin')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'admin' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Admin</button>
-                    </div>
-                 )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {!isLogin && (
+                  <div className="flex bg-slate-100 p-1 rounded-xl mb-4 gap-1">
+                    <button type="button" onClick={() => setRegRole('pd')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'pd' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Perangkat Daerah</button>
+                    <button type="button" onClick={() => setRegRole('pimpinan')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'pimpinan' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Pimpinan</button>
+                    <button type="button" onClick={() => setRegRole('admin')} className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all ${regRole === 'admin' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Admin</button>
+                  </div>
+                )}
 
-                 {!isLogin && (regRole === 'pd' || regRole === 'pimpinan') && (
-                    <div><input type="text" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={name} onChange={e => setName(e.target.value)} placeholder="Nama Lengkap" /></div>
-                 )}
-                 {!isLogin && regRole === 'pd' && (
-                    <div>
-                      <select required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500 bg-white" value={agency} onChange={e => setAgency(e.target.value)}>
-                        {LEADING_SECTORS.map(sec => <option key={sec} value={sec}>{sec}</option>)}
-                      </select>
-                    </div>
-                 )}
+                {!isLogin && (regRole === 'pd' || regRole === 'pimpinan') && (
+                  <div><input type="text" required className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500" value={name} onChange={e => setName(e.target.value)} placeholder="Nama Lengkap" /></div>
+                )}
+                {!isLogin && regRole === 'pd' && (
+                  <div>
+                    <select required className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500 bg-white" value={agency} onChange={e => setAgency(e.target.value)}>
+                      {LEADING_SECTORS.map(sec => <option key={sec} value={sec}>{sec}</option>)}
+                    </select>
+                  </div>
+                )}
 
-                 <div><input type="email" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@bandung.go.id" /></div>
-                 <div><input type="password" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" /></div>
-                 
-                 {!isLogin && (
-                    <div className="bg-slate-50 p-4 rounded-xl border border-blue-100 mt-2">
-                       <label className="block text-[11px] font-bold text-slate-700 mb-1">Kode Akses Registrasi</label>
-                       <input type="password" required className="w-full px-4 py-3 rounded-xl border outline-none focus:ring-2 focus:ring-blue-500" value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder={regRole === 'admin' ? "Kode Akses" : "Kode Akses"} />
-                    </div>
-                 )}
+                <div><input type="email" required className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@bandung.go.id" /></div>
+                <div><input type="password" required className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-blue-500" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" /></div>
+                
+                {!isLogin && (
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mt-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Kode Akses</label>
+                    <input type="password" required className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-emerald-500" value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder="Masukkan Kode Akses" />
+                  </div>
+                )}
 
-                 {isLogin && (<div className="text-right"><button type="button" onClick={() => setIsForgotPassword(true)} className="text-xs text-blue-600 font-bold hover:underline">Lupa Password?</button></div>)}
-                 <button type="submit" disabled={loading} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex justify-center shadow-lg">{loading ? <Loader2 className="animate-spin" /> : (isLogin ? 'Login' : 'Registrasi')}</button>
-               </form>
+                {isLogin && (<div className="flex justify-end"><button type="button" onClick={() => setIsForgotPassword(true)} className="text-sm font-medium text-blue-600 hover:underline">Lupa Password?</button></div>)}
+
+                <button type="submit" disabled={loading} className="w-full py-3.5 mt-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg flex justify-center">{loading ? <Loader2 className="animate-spin" /> : (isLogin ? 'Login' : 'Registrasi')}</button>
+              </form>
             )}
 
             {!isForgotPassword && (
@@ -263,9 +266,52 @@
       );
     }
 
-    function DashboardView({ issues, setActiveTab }) {
+    function DashboardView({ issues, setActiveTab, potensiMingguan, role, onSavePotensiMingguan, showToast }) {
       const [startDate, setStartDate] = useState('');
       const [endDate, setEndDate] = useState('');
+      
+      const [isEditingMingguan, setIsEditingMingguan] = useState(false);
+      const [selectedMingguanId, setSelectedMingguanId] = useState('');
+      const [editDataMingguan, setEditDataMingguan] = useState({ id: '', month: '', week: '', year: '', points: [''] });
+
+      const currentMingguan = useMemo(() => {
+          if (!potensiMingguan || potensiMingguan.length === 0) return null;
+          return potensiMingguan.find(m => m.id === selectedMingguanId) || potensiMingguan[0];
+      }, [potensiMingguan, selectedMingguanId]);
+
+      useEffect(() => { 
+          if (currentMingguan && currentMingguan.id !== selectedMingguanId) {
+              setSelectedMingguanId(currentMingguan.id); 
+          }
+      }, [currentMingguan, selectedMingguanId]);
+
+      const handleAddMingguan = () => {
+          setEditDataMingguan({ id: Date.now().toString(), month: MONTHS[new Date().getMonth()], week: '1', year: new Date().getFullYear().toString(), points: [''] });
+          setIsEditingMingguan(true);
+      };
+
+      const handleEditMingguan = () => {
+          if(currentMingguan) { setEditDataMingguan(JSON.parse(JSON.stringify(currentMingguan))); setIsEditingMingguan(true); }
+      };
+
+      const handleDeleteMingguan = () => {
+          if(currentMingguan && window.confirm("Hapus riwayat potensi ini?")) {
+              const newArr = potensiMingguan.filter(m => m.id !== currentMingguan.id);
+              onSavePotensiMingguan(newArr);
+              setSelectedMingguanId('');
+          }
+      };
+
+      const handleSaveMingguan = () => {
+          const cleanPoints = editDataMingguan.points.filter(p => p.trim() !== '');
+          if(cleanPoints.length === 0) return showToast("Minimal masukkan 1 poin potensi isu", "error");
+          const finalData = { ...editDataMingguan, points: cleanPoints };
+          const newArr = [...(potensiMingguan || [])];
+          const existingIdx = newArr.findIndex(m => m.id === finalData.id);
+          if(existingIdx >= 0) newArr[existingIdx] = finalData; else newArr.unshift(finalData);
+          onSavePotensiMingguan(newArr);
+          setSelectedMingguanId(finalData.id); setIsEditingMingguan(false);
+      };
 
       const filteredIssues = useMemo(() => {
         return issues.filter(issue => {
@@ -355,6 +401,71 @@
             </div>
           </div>
 
+          {/* Baris Potensi Isu Mingguan */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col mb-6">
+              <div className="flex flex-wrap justify-between items-center mb-4 pb-3 border-b border-slate-100 gap-2">
+                  <h3 className="font-bold text-slate-800 flex items-center text-sm"><TrendingUp className="mr-2 text-amber-500" size={16} /> Potensi Isu Mingguan</h3>
+                  <div className="flex items-center gap-1.5">
+                      <select value={selectedMingguanId} onChange={(e) => setSelectedMingguanId(e.target.value)} className="bg-slate-50 border border-slate-200 text-xs rounded-lg px-2 py-1.5 outline-none font-bold text-slate-600">
+                          {(potensiMingguan || []).map(m => <option key={m.id} value={m.id}>{m.month} Mg ke-{m.week} ({m.year})</option>)}
+                          {(!potensiMingguan || potensiMingguan.length === 0) && <option value="">Belum ada data</option>}
+                      </select>
+                      {role === 'admin' && !isEditingMingguan && (
+                          <>
+                              {currentMingguan && (
+                                  <>
+                                      <button onClick={handleEditMingguan} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Riwayat Ini"><Edit2 size={14}/></button>
+                                      <button onClick={handleDeleteMingguan} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Riwayat Ini"><Trash2 size={14}/></button>
+                                  </>
+                              )}
+                              <button onClick={handleAddMingguan} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Tambah Riwayat Baru"><Plus size={16}/></button>
+                          </>
+                      )}
+                  </div>
+              </div>
+              
+              {isEditingMingguan ? (
+                  <div className="flex flex-col">
+                      <div className="flex gap-2 mb-2">
+                          <select value={editDataMingguan.month} onChange={e => setEditDataMingguan({...editDataMingguan, month: e.target.value})} className="border border-slate-200 bg-white rounded-lg px-2 py-1.5 text-xs outline-none flex-1 font-bold text-slate-600">{MONTHS.map(m=><option key={m} value={m}>{m}</option>)}</select>
+                          <select value={editDataMingguan.week} onChange={e => setEditDataMingguan({...editDataMingguan, week: e.target.value})} className="border border-slate-200 bg-white rounded-lg px-2 py-1.5 text-xs outline-none flex-1 font-bold text-slate-600">{WEEKS.map(w=><option key={w} value={w}>Minggu ke-{w}</option>)}</select>
+                          <select value={editDataMingguan.year} onChange={e => setEditDataMingguan({...editDataMingguan, year: e.target.value})} className="border border-slate-200 bg-white rounded-lg px-2 py-1.5 text-xs outline-none flex-1 font-bold text-slate-600">{YEARS.map(y=><option key={y} value={y}>{y}</option>)}</select>
+                      </div>
+                      <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2 mt-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">Daftar Poin Potensi Isu</label>
+                          {editDataMingguan.points.map((pt, idx) => (
+                              <div key={idx} className="flex gap-2 items-start">
+                                 <span className="mt-2 text-xs font-bold text-slate-400 w-4 text-right">{idx + 1}.</span>
+                                 <textarea rows="2" className="flex-1 border border-slate-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    value={pt} placeholder="Masukkan deskripsi potensi isu..."
+                                    onChange={e => {
+                                        const newPts = [...editDataMingguan.points]; newPts[idx] = e.target.value; setEditDataMingguan({...editDataMingguan, points: newPts});
+                                    }} 
+                                 />
+                                 <button type="button" onClick={() => {
+                                     const newPts = editDataMingguan.points.filter((_, i) => i !== idx); setEditDataMingguan({...editDataMingguan, points: newPts});
+                                 }} className="mt-1 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Poin"><X size={16}/></button>
+                              </div>
+                          ))}
+                          <button type="button" onClick={() => setEditDataMingguan({...editDataMingguan, points: [...editDataMingguan.points, '']})} className="text-[11px] bg-blue-100 text-blue-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-200 transition-colors flex items-center w-fit mt-2"><Plus size={14} className="mr-1"/> Tambah Poin</button>
+                      </div>
+                      <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-100">
+                          <button onClick={() => setIsEditingMingguan(false)} className="px-4 py-2 text-xs text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg font-bold transition-colors">Batal</button>
+                          <button onClick={handleSaveMingguan} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center shadow-sm transition-colors"><Save size={14} className="mr-1.5"/> Simpan</button>
+                      </div>
+                  </div>
+              ) : (
+                  <div className="flex-1 bg-white p-2">
+                      {currentMingguan ? (
+                          <ul className="list-disc pl-5 space-y-1.5 text-sm text-slate-700">
+                              {currentMingguan.points.map((pt, i) => <li key={i}>{pt}</li>)}
+                          </ul>
+                      ) : <p className="text-sm text-slate-400 text-center py-4">Belum ada data potensi mingguan.</p>}
+                  </div>
+              )}
+          </div>
+
+          {/* Baris Kedua: Kategori Isu (BarChart) & Status Penanganan (PieChart) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2">
               <h3 className="font-bold text-slate-800 mb-6 flex items-center"><BarChart2 className="mr-2 text-slate-400" /> Distribusi Kategori Isu</h3>
@@ -391,6 +502,7 @@
             </div>
           </div>
 
+          {/* Baris Ketiga: Perangkat Daerah, Sentimen, dan Isu Terbaru */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[400px]">
               <h3 className="font-bold text-slate-800 mb-4 flex items-center"><Building className="mr-2 text-slate-400" size={18}/> Rekap Perangkat Daerah</h3>
@@ -610,7 +722,7 @@
               return (
                 <div key={issue.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow flex flex-col relative overflow-hidden">
                   {!issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-amber-100 text-amber-700 text-[10px] font-bold px-3 py-1 rounded-bl-lg">DRAFT</div>}
-                  {issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-bl-lg">PUBLISHED</div>}
+                  {issue.analysisPublished && <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-bl-lg">PUBLISHED</div>}
                   
                   <div className="flex justify-between items-center mb-3 mt-2">
                     <div className="flex gap-2">
@@ -686,6 +798,7 @@
           sourceType: type,
           title: '', date: new Date().toISOString().split('T')[0],
           sentiment: 'Netral', leadingSector: LEADING_SECTORS[0],
+          issueCategory: 'Birokrasi',
           platform: '', postType: '', account: '', link: '', caption: '',
           domain: '', content: '',
           printType: 'Koran', mediaName: PRINT_MEDIA_NAMES[0], customMediaName: '', comments: []
@@ -754,12 +867,14 @@
 
       const handleSubmit = (e) => {
         e.preventDefault();
-        const dataToSave = { ...formData };
+        const finalCategory = formData.issueCategory === 'Lainnya' ? formData.customIssueCategory : formData.issueCategory;
+        const dataToSave = { ...formData, issueCategory: finalCategory };
         if (type === 'Media Cetak') {
             dataToSave.mediaName = formData.mediaName === 'Lainnya' ? formData.customMediaName : formData.mediaName;
             delete dataToSave.customMediaName;
             delete dataToSave.links; // Pastikan link tidak disimpan untuk media cetak
         }
+        delete dataToSave.customIssueCategory;
         onSave(dataToSave, file);
       };
 
@@ -1006,6 +1121,7 @@
     function HandlingModal({ issue, onClose, onSave, isUploading }) {
       const [status, setStatus] = useState(issue.status || 'Belum Ditangani');
       const [notes, setNotes] = useState(issue.handlingNotes || '');
+      const [handlingDate, setHandlingDate] = useState(issue.handlingDate || new Date().toISOString().split('T')[0]);
       const [file, setFile] = useState(null);
 
       return (
@@ -1016,13 +1132,19 @@
               <button onClick={onClose} className="hover:text-emerald-200"><X size={24} /></button>
             </div>
             <div className="p-6 space-y-4">
-               <div>
-                 <label className="block text-sm font-medium text-slate-700 mb-1">Status Penanganan</label>
-                 <select value={status} onChange={e => setStatus(e.target.value)} className="w-full px-3 py-2 border rounded-xl font-bold bg-slate-50 outline-none">
-                    <option value="Belum Ditangani">Belum Ditangani</option>
-                    <option value="Dalam Proses">Dalam Proses</option>
-                    <option value="Selesai">Selesai</option>
-                 </select>
+               <div className="grid grid-cols-2 gap-4">
+                 <div>
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Tanggal Penanganan</label>
+                   <input type="date" value={handlingDate} onChange={e => setHandlingDate(e.target.value)} className="w-full px-3 py-2 border rounded-xl font-bold bg-slate-50 outline-none" required />
+                 </div>
+                 <div>
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Status Penanganan</label>
+                   <select value={status} onChange={e => setStatus(e.target.value)} className="w-full px-3 py-2 border rounded-xl font-bold bg-slate-50 outline-none">
+                      <option value="Belum Ditangani">Belum Ditangani</option>
+                      <option value="Dalam Proses">Dalam Proses</option>
+                      <option value="Selesai">Selesai</option>
+                   </select>
+                 </div>
                </div>
                <div>
                  <label className="block text-sm font-medium text-slate-700 mb-1">Catatan Tindak Lanjut</label>
@@ -1034,7 +1156,7 @@
               </div>
               <div className="pt-4 flex justify-end gap-3">
                 <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
-                <button onClick={() => onSave(status, notes, file)} disabled={isUploading} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center">
+                <button onClick={() => onSave(status, notes, file, handlingDate)} disabled={isUploading} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center">
                    {isUploading ? <Loader2 size={18} className="animate-spin mr-2"/> : <CheckCircle2 size={18} className="mr-2"/>} Simpan
                 </button>
               </div>
@@ -1083,6 +1205,7 @@
       const [isFetchingNews, setIsFetchingNews] = useState(false);
       const [showNotifPanel, setShowNotifPanel] = useState(false);
       const [editingAnalysisIssue, setEditingAnalysisIssue] = useState(null);
+      const [potensiMingguan, setPotensiMingguan] = useState([]);
 
       const showToast = (message, type = 'info') => {
         setToast({ show: true, message: typeof message === 'string' ? message : "Terjadi kesalahan", type });
@@ -1113,12 +1236,27 @@
 
       useEffect(() => {
         if (!user || !db) return;
+
         const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), orderBy('createdAt', 'desc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const unsubscribeIssues = onSnapshot(q, (snapshot) => {
           const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setIssues(data);
-        }, (error) => { showToast("Gagal memuat data", "error"); });
-        return () => unsubscribe();
+          const actualIssues = data.filter(d => d.id !== 'SETTING_POTENSI_MINGGUAN');
+          setIssues(actualIssues);
+        }, (error) => { showToast("Gagal memuat data isu", "error"); });
+
+        const docRefPotensi = doc(db, 'artifacts', appId, 'public', 'data', 'issues', 'SETTING_POTENSI_MINGGUAN');
+        const unsubscribePotensi = onSnapshot(docRefPotensi, (docSnap) => {
+          if (docSnap.exists()) {
+             setPotensiMingguan(docSnap.data().data || []);
+          } else {
+             setPotensiMingguan([]);
+          }
+        });
+
+        return () => {
+          unsubscribeIssues();
+          unsubscribePotensi();
+        };
       }, [user]);
 
       const notifications = useMemo(() => {
@@ -1169,6 +1307,20 @@
         } catch (error) { showToast("Gagal", "error"); } finally { setIsUploading(false); }
       };
 
+      const savePotensiMingguan = async (updatedArray) => {
+        if (userRole !== 'admin') return;
+        try {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', 'SETTING_POTENSI_MINGGUAN'), {
+            isSetting: true,
+            data: updatedArray,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+          showToast("Potensi Isu Mingguan berhasil diperbarui", "success");
+        } catch (err) {
+          showToast("Gagal menyimpan Potensi Isu", "error");
+        }
+      };
+
       const deleteIssue = async (id) => {
         if (userRole !== 'admin') return;
         try {
@@ -1177,7 +1329,7 @@
         } catch (error) { showToast("Gagal", "error"); }
       };
 
-      const saveHandlingUpdate = async (status, notes, attachmentFile) => {
+      const saveHandlingUpdate = async (status, notes, attachmentFile, handlingDate) => {
         if (!handlingIssue) return;
         try {
           setIsUploading(true);
@@ -1185,11 +1337,11 @@
           if (attachmentFile) handlingAttachmentUrl = await uploadFileToStorage(attachmentFile, 'handling');
 
           await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', handlingIssue.id), {
-            status, handlingNotes: notes, handlingAttachmentUrl, handlingUpdatedAt: new Date().toISOString(), handlingUpdatedBy: userProfile.name
+            status, handlingNotes: notes, handlingAttachmentUrl, handlingDate, handlingUpdatedAt: new Date().toISOString(), handlingUpdatedBy: userProfile.name
           });
           showToast("Update tersimpan", "success");
           setHandlingIssue(null);
-          setViewingIssue({...handlingIssue, status, handlingNotes: notes, handlingAttachmentUrl});
+          setViewingIssue({...handlingIssue, status, handlingNotes: notes, handlingAttachmentUrl, handlingDate});
         } catch (error) { showToast("Gagal", "error"); } finally { setIsUploading(false); }
       };
 
@@ -1287,14 +1439,15 @@
           const sectorsStr = (issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ');
           
           let additionalContext = '';
+          let instructionContext = '';
           if (issue.sourceType === 'Media Sosial') {
               let commentsStr = (issue.comments || []).map((c, i) => `${i+1}. [${c.sentiment}] @${c.account || 'anonim'}: ${c.content}`).join('\n');
               if (commentsStr) {
                   additionalContext = `\n\nKomentar Netizen:\n${commentsStr}`;
+                  instructionContext = ` Khusus untuk isu media sosial ini, berikan analisis yang mempertimbangkan baik isi postingan (caption) maupun pola respon/sentimen komentar netizen yang ada.`;
               }
           }
 
-          // PROMPT AI SUPER KETAT
           const prompt = `Sebagai analis kebijakan ahli Pemerintah Kota Bandung, analisislah isu berikut:
 Judul: ${issue.title}
 Kategori Isu: ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}
@@ -1658,12 +1811,18 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
         text += `*Ringkasan Isu:*\n${issue.title}\n`;
         text += `*Kategori Isu:* ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}\n`;
         
-        const platforms = (issue.platforms || [issue.platform]).filter(Boolean);
-        const accounts = (issue.accounts || [issue.account]).filter(Boolean);
-        
-        text += `*Media/Platform:* ${issue.sourceType} ${platforms.length ? '- ' + platforms.join(', ') : ''}\n`;
-        if (accounts.length > 0) {
-            text += `*Akun Sumber:* ${accounts.join(', ')}\n`;
+        if (issue.sourceType === 'Media Cetak') {
+            text += `*Media:* Media Cetak - ${issue.mediaName || '-'}\n`;
+        } else if (issue.sourceType === 'Media Online') {
+            const domains = (issue.domains || [issue.domain]).filter(Boolean);
+            text += `*Media/Domain:* Media Online ${domains.length ? '- ' + domains.join(', ') : ''}\n`;
+        } else {
+            const platforms = (issue.platforms || [issue.platform]).filter(Boolean);
+            const accounts = (issue.accounts || [issue.account]).filter(Boolean);
+            text += `*Media/Platform:* ${issue.sourceType} ${platforms.length ? '- ' + platforms.join(', ') : ''}\n`;
+            if (accounts.length > 0) {
+                text += `*Akun Sumber:* ${accounts.join(', ')}\n`;
+            }
         }
 
         const links = (issue.links || [issue.link]).filter(Boolean);
@@ -1754,7 +1913,7 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
               </div>
             </header>
             <div className="flex-1 overflow-y-auto p-5 scroll-smooth"><div className="max-w-7xl mx-auto">
-              {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} />}
+              {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} potensiMingguan={potensiMingguan} role={userRole} onSavePotensiMingguan={savePotensiMingguan} showToast={showToast} />}
               {activeTab === 'social' && <DataTableView title="Media Sosial" type="Media Sosial" issues={issues.filter(i=>i.sourceType==='Media Sosial')} onAdd={()=>setIsIssueModalOpen('Media Sosial')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Sosial');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
               {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} onFetchNews={handleFetchNews} isFetchingNews={isFetchingNews} />}
               {activeTab === 'print' && <DataTableView title="Media Cetak" type="Media Cetak" issues={issues.filter(i=>i.sourceType==='Media Cetak')} onAdd={()=>setIsIssueModalOpen('Media Cetak')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Cetak');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
@@ -1778,6 +1937,8 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
                             <h4 className="font-bold text-blue-800 mb-4 flex items-center text-sm"><Share2 size={16} className="mr-2"/> Informasi Sumber & Sektor</h4>
                             <div className="space-y-3 text-sm text-slate-700">
                                <p><strong>Media:</strong> {viewingIssue.sourceType}</p>
+                               <p><strong>Kategori Isu:</strong> {(viewingIssue.issueCategories || [viewingIssue.issueCategory || '-']).join(', ')}</p>
+                               
                                {viewingIssue.sourceType === 'Media Cetak' && (
                                   <>
                                     <p><strong>Jenis Media:</strong> {viewingIssue.printType}</p>
@@ -1793,11 +1954,16 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
                                )}
                                {viewingIssue.sourceType === 'Media Sosial' && (
                                   <>
-                                     {viewingIssue.platforms && viewingIssue.platforms.filter(Boolean).length > 0 && (
+                                     {viewingIssue.platforms && viewingIssue.platforms.filter(Boolean).length > 0 ? (
                                         <p><strong>Platform:</strong> {viewingIssue.platforms.filter(Boolean).join(', ')}</p>
+                                     ) : viewingIssue.platform && (
+                                        <p><strong>Platform:</strong> {viewingIssue.platform}</p>
                                      )}
-                                     {viewingIssue.accounts && viewingIssue.accounts.filter(Boolean).length > 0 && (
+                                     
+                                     {viewingIssue.accounts && viewingIssue.accounts.filter(Boolean).length > 0 ? (
                                         <p><strong>Akun Sumber:</strong> {viewingIssue.accounts.filter(Boolean).join(', ')}</p>
+                                     ) : viewingIssue.account && (
+                                        <p><strong>Akun Sumber:</strong> {viewingIssue.account}</p>
                                      )}
                                   </>
                                )}
@@ -1853,7 +2019,8 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
                           
                           <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
                             <p className="text-sm font-bold text-slate-500 mb-2">Status Penanganan</p>
-                            <p className="text-sm font-bold mb-2">Status: {viewingIssue.status}</p>
+                            <p className="text-sm font-bold mb-1">Status: {viewingIssue.status}</p>
+                            {viewingIssue.handlingDate && <p className="text-[11px] text-slate-500 font-medium mb-2">Tgl Penanganan: {viewingIssue.handlingDate}</p>}
                             {viewingIssue.handlingNotes && <p className="text-sm border-t border-slate-200 pt-2 mt-2">{viewingIssue.handlingNotes}</p>}
                             {viewingIssue.handlingAttachmentUrl && (
                               <a href={viewingIssue.handlingAttachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-3 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg font-bold text-xs"><ImageIcon size={14} className="mr-1"/> Lihat Bukti Penanganan</a>
@@ -1871,9 +2038,9 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
                               <div className="flex flex-wrap justify-between items-start mb-5 border-b border-amber-200 pb-4 gap-2">
                                  <h4 className="font-bold text-amber-900 flex items-center text-lg"><Brain className="mr-2 text-amber-600"/> Hasil Analisis & Rekomendasi</h4>
                                  <div className="flex gap-2">
-                                     <button onClick={() => handleDownloadWord(viewingIssue)} className="text-[10px] bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded font-bold transition-colors shadow-sm">DOCX</button>
-                                     <button onClick={() => handleDownloadPDF(viewingIssue)} className="text-[10px] bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded font-bold transition-colors shadow-sm">PDF</button>
-                                     <button onClick={() => handleSendWA(viewingIssue)} className="text-[10px] bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded font-bold transition-colors shadow-sm flex items-center" title="Kirim Laporan via WhatsApp"><MessageCircle size={12} className="mr-1"/> WA</button>
+                                     <button onClick={() => handleDownloadWord(viewingIssue)} className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">DOCX</button>
+                                     <button onClick={() => handleDownloadPDF(viewingIssue)} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">PDF</button>
+                                     <button onClick={() => handleSendWA(viewingIssue)} className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded font-bold transition-colors shadow-sm flex items-center" title="Kirim Laporan via WhatsApp"><MessageCircle size={14}/></button>
                                  </div>
                               </div>
                               
