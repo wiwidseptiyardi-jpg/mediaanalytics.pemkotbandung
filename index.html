@@ -121,7 +121,6 @@
     const COLORS = { Positif: '#10b981', Negatif: '#ef4444', Netral: '#f59e0b' };
 
     const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    const WEEKS = ['1', '2', '3', '4', '5'];
     const YEARS = ['2024', '2025', '2026', '2027', '2028', '2029', '2030'];
 
     function AuthScreen({ onLogin, setGlobalRole, setGlobalProfile, showToast }) {
@@ -266,51 +265,51 @@
       );
     }
 
-    function DashboardView({ issues, setActiveTab, potensiMingguan, role, onSavePotensiMingguan, showToast }) {
+    function DashboardView({ issues, setActiveTab, potensiIsuList, role, onSavePotensiIsu, showToast }) {
       const [startDate, setStartDate] = useState('');
       const [endDate, setEndDate] = useState('');
       
-      const [isEditingMingguan, setIsEditingMingguan] = useState(false);
-      const [selectedMingguanId, setSelectedMingguanId] = useState('');
-      const [editDataMingguan, setEditDataMingguan] = useState({ id: '', month: '', week: '', year: '', points: [''] });
+      const [isEditingPotensi, setIsEditingPotensi] = useState(false);
+      const [selectedPotensiId, setSelectedPotensiId] = useState('');
+      const [editDataPotensi, setEditDataPotensi] = useState({ id: '', month: '', year: '', points: [''] });
 
-      const currentMingguan = useMemo(() => {
-          if (!potensiMingguan || potensiMingguan.length === 0) return null;
-          return potensiMingguan.find(m => m.id === selectedMingguanId) || potensiMingguan[0];
-      }, [potensiMingguan, selectedMingguanId]);
+      const currentPotensi = useMemo(() => {
+          if (!potensiIsuList || potensiIsuList.length === 0) return null;
+          return potensiIsuList.find(m => m.id === selectedPotensiId) || potensiIsuList[0];
+      }, [potensiIsuList, selectedPotensiId]);
 
       useEffect(() => { 
-          if (currentMingguan && currentMingguan.id !== selectedMingguanId) {
-              setSelectedMingguanId(currentMingguan.id); 
+          if (currentPotensi && currentPotensi.id !== selectedPotensiId) {
+              setSelectedPotensiId(currentPotensi.id); 
           }
-      }, [currentMingguan, selectedMingguanId]);
+      }, [currentPotensi, selectedPotensiId]);
 
-      const handleAddMingguan = () => {
-          setEditDataMingguan({ id: Date.now().toString(), month: MONTHS[new Date().getMonth()], week: '1', year: new Date().getFullYear().toString(), points: [''] });
-          setIsEditingMingguan(true);
+      const handleAddPotensi = () => {
+          setEditDataPotensi({ id: Date.now().toString(), month: MONTHS[new Date().getMonth()], year: new Date().getFullYear().toString(), points: [''] });
+          setIsEditingPotensi(true);
       };
 
-      const handleEditMingguan = () => {
-          if(currentMingguan) { setEditDataMingguan(JSON.parse(JSON.stringify(currentMingguan))); setIsEditingMingguan(true); }
+      const handleEditPotensi = () => {
+          if(currentPotensi) { setEditDataPotensi(JSON.parse(JSON.stringify(currentPotensi))); setIsEditingPotensi(true); }
       };
 
-      const handleDeleteMingguan = () => {
-          if(currentMingguan && window.confirm("Hapus riwayat potensi ini?")) {
-              const newArr = potensiMingguan.filter(m => m.id !== currentMingguan.id);
-              onSavePotensiMingguan(newArr);
-              setSelectedMingguanId('');
+      const handleDeletePotensi = () => {
+          if(currentPotensi && window.confirm("Hapus riwayat potensi ini?")) {
+              const newArr = potensiIsuList.filter(m => m.id !== currentPotensi.id);
+              onSavePotensiIsu(newArr);
+              setSelectedPotensiId('');
           }
       };
 
-      const handleSaveMingguan = () => {
-          const cleanPoints = editDataMingguan.points.filter(p => p.trim() !== '');
+      const handleSavePotensi = () => {
+          const cleanPoints = editDataPotensi.points.filter(p => p.trim() !== '');
           if(cleanPoints.length === 0) return showToast("Minimal masukkan 1 poin potensi isu", "error");
-          const finalData = { ...editDataMingguan, points: cleanPoints };
-          const newArr = [...(potensiMingguan || [])];
+          const finalData = { ...editDataPotensi, points: cleanPoints };
+          const newArr = [...(potensiIsuList || [])];
           const existingIdx = newArr.findIndex(m => m.id === finalData.id);
           if(existingIdx >= 0) newArr[existingIdx] = finalData; else newArr.unshift(finalData);
-          onSavePotensiMingguan(newArr);
-          setSelectedMingguanId(finalData.id); setIsEditingMingguan(false);
+          onSavePotensiIsu(newArr);
+          setSelectedPotensiId(finalData.id); setIsEditingPotensi(false);
       };
 
       const filteredIssues = useMemo(() => {
@@ -401,66 +400,65 @@
             </div>
           </div>
 
-          {/* Baris Potensi Isu Mingguan */}
+          {/* Baris Potensi Isu */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col mb-6">
               <div className="flex flex-wrap justify-between items-center mb-4 pb-3 border-b border-slate-100 gap-2">
-                  <h3 className="font-bold text-slate-800 flex items-center text-sm"><TrendingUp className="mr-2 text-amber-500" size={16} /> Potensi Isu Mingguan</h3>
+                  <h3 className="font-bold text-slate-800 flex items-center text-sm"><TrendingUp className="mr-2 text-amber-500" size={16} /> Potensi Isu</h3>
                   <div className="flex items-center gap-1.5">
-                      <select value={selectedMingguanId} onChange={(e) => setSelectedMingguanId(e.target.value)} className="bg-slate-50 border border-slate-200 text-xs rounded-lg px-2 py-1.5 outline-none font-bold text-slate-600">
-                          {(potensiMingguan || []).map(m => <option key={m.id} value={m.id}>{m.month} Mg ke-{m.week} ({m.year})</option>)}
-                          {(!potensiMingguan || potensiMingguan.length === 0) && <option value="">Belum ada data</option>}
+                      <select value={selectedPotensiId} onChange={(e) => setSelectedPotensiId(e.target.value)} className="bg-slate-50 border border-slate-200 text-xs rounded-lg px-2 py-1.5 outline-none font-bold text-slate-600">
+                          {(potensiIsuList || []).map(m => <option key={m.id} value={m.id}>{m.month} {m.year}</option>)}
+                          {(!potensiIsuList || potensiIsuList.length === 0) && <option value="">Belum ada data</option>}
                       </select>
-                      {role === 'admin' && !isEditingMingguan && (
+                      {role === 'admin' && !isEditingPotensi && (
                           <>
-                              {currentMingguan && (
+                              {currentPotensi && (
                                   <>
-                                      <button onClick={handleEditMingguan} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Riwayat Ini"><Edit2 size={14}/></button>
-                                      <button onClick={handleDeleteMingguan} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Riwayat Ini"><Trash2 size={14}/></button>
+                                      <button onClick={handleEditPotensi} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Riwayat Ini"><Edit2 size={14}/></button>
+                                      <button onClick={handleDeletePotensi} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Riwayat Ini"><Trash2 size={14}/></button>
                                   </>
                               )}
-                              <button onClick={handleAddMingguan} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Tambah Riwayat Baru"><Plus size={16}/></button>
+                              <button onClick={handleAddPotensi} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Tambah Riwayat Baru"><Plus size={16}/></button>
                           </>
                       )}
                   </div>
               </div>
               
-              {isEditingMingguan ? (
+              {isEditingPotensi ? (
                   <div className="flex flex-col">
                       <div className="flex gap-2 mb-2">
-                          <select value={editDataMingguan.month} onChange={e => setEditDataMingguan({...editDataMingguan, month: e.target.value})} className="border border-slate-200 bg-white rounded-lg px-2 py-1.5 text-xs outline-none flex-1 font-bold text-slate-600">{MONTHS.map(m=><option key={m} value={m}>{m}</option>)}</select>
-                          <select value={editDataMingguan.week} onChange={e => setEditDataMingguan({...editDataMingguan, week: e.target.value})} className="border border-slate-200 bg-white rounded-lg px-2 py-1.5 text-xs outline-none flex-1 font-bold text-slate-600">{WEEKS.map(w=><option key={w} value={w}>Minggu ke-{w}</option>)}</select>
-                          <select value={editDataMingguan.year} onChange={e => setEditDataMingguan({...editDataMingguan, year: e.target.value})} className="border border-slate-200 bg-white rounded-lg px-2 py-1.5 text-xs outline-none flex-1 font-bold text-slate-600">{YEARS.map(y=><option key={y} value={y}>{y}</option>)}</select>
+                          <select value={editDataPotensi.month} onChange={e => setEditDataPotensi({...editDataPotensi, month: e.target.value})} className="border border-slate-200 bg-white rounded-lg px-2 py-1.5 text-xs outline-none flex-1 font-bold text-slate-600">{MONTHS.map(m=><option key={m} value={m}>{m}</option>)}</select>
+                          <select value={editDataPotensi.year} onChange={e => setEditDataPotensi({...editDataPotensi, year: e.target.value})} className="border border-slate-200 bg-white rounded-lg px-2 py-1.5 text-xs outline-none flex-1 font-bold text-slate-600">{YEARS.map(y=><option key={y} value={y}>{y}</option>)}</select>
                       </div>
                       <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2 mt-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
                           <label className="text-[11px] font-bold text-slate-700 block mb-1">Daftar Poin Potensi Isu</label>
-                          {editDataMingguan.points.map((pt, idx) => (
+                          {editDataPotensi.points.map((pt, idx) => (
                               <div key={idx} className="flex gap-2 items-start">
                                  <span className="mt-2 text-xs font-bold text-slate-400 w-4 text-right">{idx + 1}.</span>
                                  <textarea rows="2" className="flex-1 border border-slate-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                     value={pt} placeholder="Masukkan deskripsi potensi isu..."
                                     onChange={e => {
-                                        const newPts = [...editDataMingguan.points]; newPts[idx] = e.target.value; setEditDataMingguan({...editDataMingguan, points: newPts});
+                                        const newPts = [...editDataPotensi.points]; newPts[idx] = e.target.value; setEditDataPotensi({...editDataPotensi, points: newPts});
                                     }} 
                                  />
                                  <button type="button" onClick={() => {
-                                     const newPts = editDataMingguan.points.filter((_, i) => i !== idx); setEditDataMingguan({...editDataMingguan, points: newPts});
+                                     const newPts = editDataPotensi.points.filter((_, i) => i !== idx); setEditDataPotensi({...editDataPotensi, points: newPts});
                                  }} className="mt-1 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Poin"><X size={16}/></button>
                               </div>
                           ))}
-                          <button type="button" onClick={() => setEditDataMingguan({...editDataMingguan, points: [...editDataMingguan.points, '']})} className="text-[11px] bg-blue-100 text-blue-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-200 transition-colors flex items-center w-fit mt-2"><Plus size={14} className="mr-1"/> Tambah Poin</button>
+                          <button type="button" onClick={() => setEditDataPotensi({...editDataPotensi, points: [...editDataPotensi.points, '']})} className="text-[11px] bg-blue-100 text-blue-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-200 transition-colors flex items-center w-fit mt-2"><Plus size={14} className="mr-1"/> Tambah Poin</button>
                       </div>
                       <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-100">
-                          <button onClick={() => setIsEditingMingguan(false)} className="px-4 py-2 text-xs text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg font-bold transition-colors">Batal</button>
-                          <button onClick={handleSaveMingguan} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center shadow-sm transition-colors"><Save size={14} className="mr-1.5"/> Simpan</button>
+                          <button onClick={() => setIsEditingPotensi(false)} className="px-4 py-2 text-xs text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg font-bold transition-colors">Batal</button>
+                          <button onClick={handleSavePotensi} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center shadow-sm transition-colors"><Save size={14} className="mr-1.5"/> Simpan</button>
                       </div>
                   </div>
               ) : (
                   <div className="flex-1 bg-white p-2">
-                      {currentMingguan ? (
+                      {currentPotensi ? (
                           <ul className="list-disc pl-5 space-y-1.5 text-sm text-slate-700">
-                              {currentMingguan.points.map((pt, i) => <li key={i}>{pt}</li>)}
+                              {currentPotensi.points.map((pt, i) => <li key={i}>{pt}</li>)}
                           </ul>
-                      ) : <p className="text-sm text-slate-400 text-center py-4">Belum ada data potensi mingguan.</p>}
+                      ) : <p className="text-sm text-slate-400 text-center py-4">Belum ada data potensi isu.</p>}
                   </div>
               )}
           </div>
@@ -1205,7 +1203,7 @@
       const [isFetchingNews, setIsFetchingNews] = useState(false);
       const [showNotifPanel, setShowNotifPanel] = useState(false);
       const [editingAnalysisIssue, setEditingAnalysisIssue] = useState(null);
-      const [potensiMingguan, setPotensiMingguan] = useState([]);
+      const [potensiIsuList, setPotensiIsuList] = useState([]);
 
       const showToast = (message, type = 'info') => {
         setToast({ show: true, message: typeof message === 'string' ? message : "Terjadi kesalahan", type });
@@ -1240,16 +1238,16 @@
         const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), orderBy('createdAt', 'desc'));
         const unsubscribeIssues = onSnapshot(q, (snapshot) => {
           const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          const actualIssues = data.filter(d => d.id !== 'SETTING_POTENSI_MINGGUAN');
+          const actualIssues = data.filter(d => !['SETTING_POTENSI_MINGGUAN', 'SETTING_POTENSI_ISU_DATA'].includes(d.id));
           setIssues(actualIssues);
         }, (error) => { showToast("Gagal memuat data isu", "error"); });
 
-        const docRefPotensi = doc(db, 'artifacts', appId, 'public', 'data', 'issues', 'SETTING_POTENSI_MINGGUAN');
+        const docRefPotensi = doc(db, 'artifacts', appId, 'public', 'data', 'issues', 'SETTING_POTENSI_ISU_DATA');
         const unsubscribePotensi = onSnapshot(docRefPotensi, (docSnap) => {
           if (docSnap.exists()) {
-             setPotensiMingguan(docSnap.data().data || []);
+             setPotensiIsuList(docSnap.data().data || []);
           } else {
-             setPotensiMingguan([]);
+             setPotensiIsuList([]);
           }
         });
 
@@ -1307,15 +1305,15 @@
         } catch (error) { showToast("Gagal", "error"); } finally { setIsUploading(false); }
       };
 
-      const savePotensiMingguan = async (updatedArray) => {
+      const savePotensiIsu = async (updatedArray) => {
         if (userRole !== 'admin') return;
         try {
-          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', 'SETTING_POTENSI_MINGGUAN'), {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', 'SETTING_POTENSI_ISU_DATA'), {
             isSetting: true,
             data: updatedArray,
             updatedAt: new Date().toISOString()
           }, { merge: true });
-          showToast("Potensi Isu Mingguan berhasil diperbarui", "success");
+          showToast("Potensi Isu berhasil diperbarui", "success");
         } catch (err) {
           showToast("Gagal menyimpan Potensi Isu", "error");
         }
@@ -1913,7 +1911,7 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
               </div>
             </header>
             <div className="flex-1 overflow-y-auto p-5 scroll-smooth"><div className="max-w-7xl mx-auto">
-              {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} potensiMingguan={potensiMingguan} role={userRole} onSavePotensiMingguan={savePotensiMingguan} showToast={showToast} />}
+              {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} potensiIsuList={potensiIsuList} role={userRole} onSavePotensiIsu={savePotensiIsu} showToast={showToast} />}
               {activeTab === 'social' && <DataTableView title="Media Sosial" type="Media Sosial" issues={issues.filter(i=>i.sourceType==='Media Sosial')} onAdd={()=>setIsIssueModalOpen('Media Sosial')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Sosial');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
               {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} onFetchNews={handleFetchNews} isFetchingNews={isFetchingNews} />}
               {activeTab === 'print' && <DataTableView title="Media Cetak" type="Media Cetak" issues={issues.filter(i=>i.sourceType==='Media Cetak')} onAdd={()=>setIsIssueModalOpen('Media Cetak')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Cetak');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
