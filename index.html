@@ -44,7 +44,7 @@
       Activity, LogOut, ChevronRight, Upload, CheckCircle2,
       AlertTriangle, Info, Building, FileText,
       Link as LinkIcon, Image as ImageIcon, Loader2, Save, Trash2, Edit2, Eye,
-      Bell, MessageCircle, Brain, Download, Send, Lock, Filter
+      Bell, MessageCircle, Brain, Download, Send, Lock, Filter, TrendingUp
     } from 'https://esm.sh/lucide-react@0.378.0?deps=react@18.3.1';
 
     import { 
@@ -119,6 +119,9 @@
     ];
 
     const COLORS = { Positif: '#10b981', Negatif: '#ef4444', Netral: '#f59e0b' };
+
+    const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    const YEARS = ['2024', '2025', '2026', '2027', '2028', '2029', '2030'];
 
     function AuthScreen({ onLogin, setGlobalRole, setGlobalProfile, showToast }) {
       const [isLogin, setIsLogin] = useState(true);
@@ -262,9 +265,56 @@
       );
     }
 
-    function DashboardView({ issues, setActiveTab }) {
+    function DashboardView({ issues, setActiveTab, potensiIsuList, role, onSavePotensiIsu, showToast }) {
       const [startDate, setStartDate] = useState('');
       const [endDate, setEndDate] = useState('');
+
+      const [isEditingPotensi, setIsEditingPotensi] = useState(false);
+      const [selectedPotensiId, setSelectedPotensiId] = useState('');
+      const [editDataPotensi, setEditDataPotensi] = useState({ id: '', month: '', year: '', points: [''] });
+
+      const currentPotensi = useMemo(() => {
+          if (!potensiIsuList || potensiIsuList.length === 0) return null;
+          return potensiIsuList.find(m => m.id === selectedPotensiId) || potensiIsuList[0];
+      }, [potensiIsuList, selectedPotensiId]);
+
+      useEffect(() => { 
+          if (currentPotensi && currentPotensi.id !== selectedPotensiId) {
+              setSelectedPotensiId(currentPotensi.id); 
+          }
+      }, [currentPotensi, selectedPotensiId]);
+
+      const handleAddPotensi = () => {
+          setEditDataPotensi({ id: Date.now().toString(), month: MONTHS[new Date().getMonth()], year: new Date().getFullYear().toString(), points: [''] });
+          setIsEditingPotensi(true);
+      };
+
+      const handleEditPotensi = () => {
+          if(currentPotensi) { setEditDataPotensi(JSON.parse(JSON.stringify(currentPotensi))); setIsEditingPotensi(true); }
+      };
+
+      const handleDeletePotensi = () => {
+          if(currentPotensi && window.confirm("Hapus riwayat daftar ini?")) {
+              const newArr = potensiIsuList.filter(m => m.id !== currentPotensi.id);
+              onSavePotensiIsu(newArr);
+              setSelectedPotensiId('');
+          }
+      };
+
+      const handleSavePotensi = () => {
+          const cleanPoints = editDataPotensi.points.filter(p => p.trim() !== '');
+          if(cleanPoints.length === 0) {
+             if (showToast) showToast("Minimal masukkan 1 poin daftar", "error");
+             else alert("Minimal masukkan 1 poin daftar");
+             return;
+          }
+          const finalData = { ...editDataPotensi, points: cleanPoints };
+          const newArr = [...(potensiIsuList || [])];
+          const existingIdx = newArr.findIndex(m => m.id === finalData.id);
+          if(existingIdx >= 0) newArr[existingIdx] = finalData; else newArr.unshift(finalData);
+          onSavePotensiIsu(newArr);
+          setSelectedPotensiId(finalData.id); setIsEditingPotensi(false);
+      };
 
       const filteredIssues = useMemo(() => {
         return issues.filter(issue => {
@@ -287,20 +337,13 @@
           { name: 'Netral', value: filteredIssues.filter(i => i.sentiment === 'Netral').length, color: COLORS.Netral },
         ];
 
-        // MENGHITUNG STATUS BERDASARKAN RIWAYAT PENANGANAN TERBARU JIKA ADA, ATAU STATUS DEFAULT ISU
         const statusCount = { 'Belum Ditangani': 0, 'Dalam Proses': 0, 'Selesai': 0 };
         const sectorCount = {};
         const categoryIssueCount = {};
         
         filteredIssues.forEach(i => {
-          // Cari status paling akhir dari array handlingRecords, atau fallback ke status bawaan isu
-          let finalStatus = i.status || 'Belum Ditangani';
-          if (i.handlingRecords && i.handlingRecords.length > 0) {
-             const sortedRecords = [...i.handlingRecords].sort((a,b) => new Date(b.date) - new Date(a.date));
-             finalStatus = sortedRecords[0].status;
-          }
-          
-          if (statusCount[finalStatus] !== undefined) statusCount[finalStatus]++;
+          const status = i.status || 'Belum Ditangani';
+          if (statusCount[status] !== undefined) statusCount[status]++;
           else statusCount['Belum Ditangani']++;
           
           const sectors = i.leadingSectors || (i.leadingSector ? [i.leadingSector] : ['Lainnya']);
@@ -361,6 +404,70 @@
             </div>
           </div>
 
+          {/* Baris Daftar Isu Prioritas */}
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col mb-6 mt-4">
+              <div className="flex flex-wrap justify-between items-center mb-4 pb-3 border-b border-slate-100 gap-2">
+                  <h3 className="font-bold text-slate-800 flex items-center text-sm"><TrendingUp className="mr-2 text-amber-500" size={16} /> Daftar Isu Prioritas (Potensi Isu)</h3>
+                  <div className="flex items-center gap-1.5">
+                      <select value={selectedPotensiId} onChange={(e) => setSelectedPotensiId(e.target.value)} className="bg-slate-50 border border-slate-200 text-xs rounded-lg px-2 py-1.5 outline-none font-bold text-slate-600">
+                          {(potensiIsuList || []).map(m => <option key={m.id} value={m.id}>{m.month} {m.year}</option>)}
+                          {(!potensiIsuList || potensiIsuList.length === 0) && <option value="">Belum ada data</option>}
+                      </select>
+                      {role === 'admin' && !isEditingPotensi && (
+                          <>
+                              {currentPotensi && (
+                                  <>
+                                      <button onClick={handleEditPotensi} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Riwayat Ini"><Edit2 size={14}/></button>
+                                      <button onClick={handleDeletePotensi} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Riwayat Ini"><Trash2 size={14}/></button>
+                                  </>
+                              )}
+                              <button onClick={handleAddPotensi} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Tambah Riwayat Baru"><Plus size={16}/></button>
+                          </>
+                      )}
+                  </div>
+              </div>
+              
+              {isEditingPotensi ? (
+                  <div className="flex flex-col">
+                      <div className="flex gap-2 mb-2">
+                          <select value={editDataPotensi.month} onChange={e => setEditDataPotensi({...editDataPotensi, month: e.target.value})} className="border border-slate-200 bg-white rounded-lg px-2 py-1.5 text-xs outline-none flex-1 font-bold text-slate-600">{MONTHS.map(m=><option key={m} value={m}>{m}</option>)}</select>
+                          <select value={editDataPotensi.year} onChange={e => setEditDataPotensi({...editDataPotensi, year: e.target.value})} className="border border-slate-200 bg-white rounded-lg px-2 py-1.5 text-xs outline-none flex-1 font-bold text-slate-600">{YEARS.map(y=><option key={y} value={y}>{y}</option>)}</select>
+                      </div>
+                      <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2 mt-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">Daftar Poin Prioritas</label>
+                          {editDataPotensi.points.map((pt, idx) => (
+                              <div key={idx} className="flex gap-2 items-start">
+                                 <span className="mt-2 text-xs font-bold text-slate-400 w-4 text-right">{idx + 1}.</span>
+                                 <textarea rows="2" className="flex-1 border border-slate-200 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    value={pt} placeholder="Masukkan rincian isu prioritas..."
+                                    onChange={e => {
+                                        const newPts = [...editDataPotensi.points]; newPts[idx] = e.target.value; setEditDataPotensi({...editDataPotensi, points: newPts});
+                                    }} 
+                                 />
+                                 <button type="button" onClick={() => {
+                                     const newPts = editDataPotensi.points.filter((_, i) => i !== idx); setEditDataPotensi({...editDataPotensi, points: newPts});
+                                 }} className="mt-1 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Poin"><X size={16}/></button>
+                              </div>
+                          ))}
+                          <button type="button" onClick={() => setEditDataPotensi({...editDataPotensi, points: [...editDataPotensi.points, '']})} className="text-[11px] bg-blue-100 text-blue-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-200 transition-colors flex items-center w-fit mt-2"><Plus size={14} className="mr-1"/> Tambah Poin</button>
+                      </div>
+                      <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-100">
+                          <button onClick={() => setIsEditingPotensi(false)} className="px-4 py-2 text-xs text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg font-bold transition-colors">Batal</button>
+                          <button onClick={handleSavePotensi} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center shadow-sm transition-colors"><Save size={14} className="mr-1.5"/> Simpan</button>
+                      </div>
+                  </div>
+              ) : (
+                  <div className="flex-1 bg-white p-2">
+                      {currentPotensi ? (
+                          <ul className="list-disc pl-5 space-y-1.5 text-sm text-slate-700">
+                              {currentPotensi.points.map((pt, i) => <li key={i}>{pt}</li>)}
+                          </ul>
+                      ) : <p className="text-sm text-slate-400 text-center py-4">Belum ada daftar isu prioritas.</p>}
+                  </div>
+              )}
+          </div>
+
+          {/* Baris Kedua: Kategori Isu (BarChart) & Status Penanganan (PieChart) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2">
               <h3 className="font-bold text-slate-800 mb-6 flex items-center"><BarChart2 className="mr-2 text-slate-400" /> Distribusi Kategori Isu</h3>
@@ -397,6 +504,7 @@
             </div>
           </div>
 
+          {/* Baris Ketiga: Perangkat Daerah, Sentimen, dan Isu Terbaru */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[400px]">
               <h3 className="font-bold text-slate-800 mb-4 flex items-center"><Building className="mr-2 text-slate-400" size={18}/> Rekap Perangkat Daerah</h3>
@@ -433,13 +541,7 @@
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[400px]">
               <h3 className="font-bold text-slate-800 mb-4 flex items-center"><Calendar className="mr-2 text-slate-400" size={18} /> Isu Terbaru</h3>
               <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
-                {[...filteredIssues].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 5).map(issue => {
-                  let status = issue.status || 'Belum Ditangani';
-                  if (issue.handlingRecords && issue.handlingRecords.length > 0) {
-                     const sortedRecords = [...issue.handlingRecords].sort((a,b) => new Date(b.date) - new Date(a.date));
-                     status = sortedRecords[0].status;
-                  }
-                  return (
+                {[...filteredIssues].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 5).map(issue => (
                   <div key={issue.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:shadow-sm transition-shadow">
                     <div className="flex justify-between items-start mb-2">
                       <span className="text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">{issue.sourceType}</span>
@@ -449,10 +551,9 @@
                     <div className="mt-2 flex flex-wrap gap-2">
                        <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-1 rounded-md font-medium">{(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}</span>
                        <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
-                       <span className={`text-[10px] px-2 py-1 rounded-md font-bold ${status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{status}</span>
                     </div>
                   </div>
-                )})}
+                ))}
                 {filteredIssues.length === 0 && <p className="text-center text-slate-500 text-sm py-4">Belum ada isu terdaftar.</p>}
               </div>
             </div>
@@ -520,13 +621,7 @@
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {sortedIssues.map((issue) => {
-                  let status = issue.status || 'Belum Ditangani';
-                  if (issue.handlingRecords && issue.handlingRecords.length > 0) {
-                     const sortedRecords = [...issue.handlingRecords].sort((a,b) => new Date(b.date) - new Date(a.date));
-                     status = sortedRecords[0].status;
-                  }
-                  return(
+                {sortedIssues.map((issue) => (
                   <tr key={issue.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="p-4 text-slate-600">{issue.date}</td>
                     <td className="p-4 font-medium text-slate-800 max-w-[250px] truncate" title={issue.title}>{issue.title}</td>
@@ -537,7 +632,7 @@
                        <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${issue.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : issue.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{issue.sentiment}</span>
                     </td>
                     <td className="p-4 text-center">
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{status}</span>
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${issue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : issue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{issue.status || 'Belum Ditangani'}</span>
                     </td>
                     <td className="p-4 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button onClick={() => onView(issue)} className="p-2 text-slate-400 hover:text-blue-600 rounded-lg mr-1"><Eye size={16} /></button>
@@ -549,7 +644,7 @@
                       )}
                     </td>
                   </tr>
-                )})}
+                ))}
                 {sortedIssues.length === 0 && (<tr><td colSpan="6" className="p-8 text-center text-slate-500">Tidak ada data.</td></tr>)}
               </tbody>
             </table>
@@ -613,10 +708,6 @@
                 </select>
               </div>
               <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-slate-500 mb-1">Filter Tanggal</label>
-                <input type="date" className="border px-3 py-1.5 rounded-lg text-sm outline-none bg-white h-[38px]" value={filterDate} onChange={(e)=>setFilterDate(e.target.value)} />
-              </div>
-              <div className="flex flex-col">
                 <label className="text-[10px] font-bold text-slate-500 mb-1">Filter Media</label>
                 <select className="border px-3 py-1.5 rounded-lg text-sm outline-none bg-white h-[38px]" value={filterMedia} onChange={(e)=>setFilterMedia(e.target.value)}>
                   <option value="">Semua Media</option><option value="Media Sosial">Media Sosial</option><option value="Media Online">Media Online</option><option value="Media Cetak">Media Cetak</option>
@@ -633,7 +724,7 @@
               return (
                 <div key={issue.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow flex flex-col relative overflow-hidden">
                   {!issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-amber-100 text-amber-700 text-[10px] font-bold px-3 py-1 rounded-bl-lg">DRAFT</div>}
-                  {issue.analysisPublished && role === 'admin' && <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-bl-lg">PUBLISHED</div>}
+                  {issue.analysisPublished && <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-bl-lg">PUBLISHED</div>}
                   
                   <div className="flex justify-between items-center mb-3 mt-2">
                     <div className="flex gap-2">
@@ -694,7 +785,7 @@
             })}
             {issuesForAnalysis.length === 0 && (
               <div className="col-span-full py-12 text-center">
-                 <BrainCircuit className="mx-auto h-12 w-12 text-slate-300 mb-3"/>
+                 <Brain className="mx-auto h-12 w-12 text-slate-300 mb-3"/>
                  <p className="text-slate-500">Tidak ada isu yang tersedia untuk ditampilkan.</p>
               </div>
             )}
@@ -783,7 +874,7 @@
         if (type === 'Media Cetak') {
             dataToSave.mediaName = formData.mediaName === 'Lainnya' ? formData.customMediaName : formData.mediaName;
             delete dataToSave.customMediaName;
-            delete dataToSave.links;
+            delete dataToSave.links; // Pastikan link tidak disimpan untuk media cetak
         }
         delete dataToSave.customIssueCategory;
         onSave(dataToSave, file);
@@ -995,11 +1086,19 @@
               )}
               {type === 'Media Cetak' && (
                  <>
-                   <div className="grid grid-cols-2 gap-4">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div><label className="block text-sm font-medium text-slate-700 mb-1">Jenis Media</label><select name="printType" value={formData.printType} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl bg-white"><option value="Koran">Koran</option><option value="Majalah">Majalah</option></select></div>
-                     <div><label className="block text-sm font-medium text-slate-700 mb-1">Nama Media</label><input type="text" name="mediaName" value={formData.mediaName} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl" /></div>
+                     <div className="flex flex-col gap-2">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Nama Media</label>
+                        <select name="mediaName" value={formData.mediaName} onChange={handleChange} className="w-full px-3 py-2 text-sm border rounded-xl outline-none bg-white">
+                            {PRINT_MEDIA_NAMES.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                        {formData.mediaName === 'Lainnya' && (
+                            <input type="text" name="customMediaName" value={formData.customMediaName} onChange={handleChange} placeholder="Tuliskan nama media..." className="w-full px-3 py-2 text-sm border rounded-xl outline-none" required />
+                        )}
+                     </div>
                    </div>
-                   
+
                    <div><label className="block text-sm font-medium text-slate-700 mb-1">Isi Berita</label><textarea name="content" rows="4" value={formData.content} onChange={handleChange} className="w-full px-3 py-2 border rounded-xl outline-none"></textarea></div>
                  </>
               )}
@@ -1021,18 +1120,11 @@
       );
     }
 
-    function HandlingModal({ issue, onClose, onSave, isUploading, agencyRole }) {
-      // Mencari apakah OPD yang sedang login sudah pernah menginput catatan sebelumnya
-      const existingRecord = (issue.handlingRecords || []).find(r => r.agency === agencyRole);
-      
-      const [status, setStatus] = useState(existingRecord ? existingRecord.status : 'Belum Ditangani');
-      const [notes, setNotes] = useState(existingRecord ? existingRecord.notes : '');
-      const [handlingDate, setHandlingDate] = useState(existingRecord ? existingRecord.date : new Date().toISOString().split('T')[0]);
-      const [handlingAgency, setHandlingAgency] = useState(agencyRole === 'admin' ? (issue.leadingSectors || [issue.leadingSector])[0] : agencyRole);
+    function HandlingModal({ issue, onClose, onSave, isUploading }) {
+      const [status, setStatus] = useState(issue.status || 'Belum Ditangani');
+      const [notes, setNotes] = useState(issue.handlingNotes || '');
+      const [handlingDate, setHandlingDate] = useState(issue.handlingDate || new Date().toISOString().split('T')[0]);
       const [file, setFile] = useState(null);
-
-      // Daftar instansi yang terlibat pada isu ini (untuk admin)
-      const involvedAgencies = issue.leadingSectors || [issue.leadingSector];
 
       return (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1042,42 +1134,32 @@
               <button onClick={onClose} className="hover:text-emerald-200"><X size={24} /></button>
             </div>
             <div className="p-6 space-y-4">
-               <div>
-                 <label className="block text-[11px] font-bold text-slate-700 mb-1">Perangkat Daerah yang Menindaklanjuti</label>
-                 <select value={handlingAgency} onChange={e => setHandlingAgency(e.target.value)} disabled={agencyRole !== 'admin'} className={`w-full px-3 py-2 text-sm border rounded-xl font-bold outline-none ${agencyRole !== 'admin' ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white'}`}>
-                    {involvedAgencies.map(a => <option key={a} value={a}>{a}</option>)}
-                 </select>
-               </div>
-               
                <div className="grid grid-cols-2 gap-4">
                  <div>
-                   <label className="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Tindak Lanjut</label>
-                   <input type="date" value={handlingDate} onChange={e => setHandlingDate(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl font-bold bg-white outline-none" required />
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Tanggal Penanganan</label>
+                   <input type="date" value={handlingDate} onChange={e => setHandlingDate(e.target.value)} className="w-full px-3 py-2 border rounded-xl font-bold bg-slate-50 outline-none" required />
                  </div>
                  <div>
-                   <label className="block text-[11px] font-bold text-slate-700 mb-1">Status Penanganan</label>
-                   <select value={status} onChange={e => setStatus(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl font-bold bg-white outline-none">
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Status Penanganan</label>
+                   <select value={status} onChange={e => setStatus(e.target.value)} className="w-full px-3 py-2 border rounded-xl font-bold bg-slate-50 outline-none">
                       <option value="Belum Ditangani">Belum Ditangani</option>
                       <option value="Dalam Proses">Dalam Proses</option>
                       <option value="Selesai">Selesai</option>
                    </select>
                  </div>
                </div>
-               
                <div>
-                 <label className="block text-[11px] font-bold text-slate-700 mb-1">Catatan Tindak Lanjut (Opsional)</label>
-                 <textarea rows="4" value={notes} onChange={e => setNotes(e.target.value)} className="w-full px-3 py-2 text-sm border rounded-xl outline-none" placeholder="Tuliskan detail tindakan yang telah dilakukan..."></textarea>
+                 <label className="block text-sm font-medium text-slate-700 mb-1">Catatan Tindak Lanjut</label>
+                 <textarea rows="4" value={notes} onChange={e => setNotes(e.target.value)} className="w-full px-3 py-2 border rounded-xl outline-none"></textarea>
                </div>
-               
                <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100 border-dashed">
-                <label className="block text-[11px] font-bold text-slate-700 mb-2 flex items-center"><Upload size={14} className="mr-1.5 text-emerald-600"/> Upload Bukti Penanganan (Opsional)</label>
-                <input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files[0])} className="text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:font-bold file:bg-emerald-100 file:text-emerald-700" />
+                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center"><Upload size={16} className="mr-2 text-emerald-600"/> Upload Bukti Penanganan</label>
+                <input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files[0])} className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-emerald-100 file:text-emerald-700" />
               </div>
-              
-              <div className="pt-2 flex justify-end gap-2">
-                <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 font-bold rounded-xl">Batal</button>
-                <button onClick={() => onSave(handlingAgency, handlingDate, status, notes, file)} disabled={isUploading} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl flex items-center">
-                   {isUploading ? <Loader2 size={16} className="animate-spin mr-1.5"/> : <CheckCircle2 size={16} className="mr-1.5"/>} Simpan Update
+              <div className="pt-4 flex justify-end gap-3">
+                <button onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl">Batal</button>
+                <button onClick={() => onSave(status, notes, file, handlingDate)} disabled={isUploading} className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center">
+                   {isUploading ? <Loader2 size={18} className="animate-spin mr-2"/> : <CheckCircle2 size={18} className="mr-2"/>} Simpan
                 </button>
               </div>
             </div>
@@ -1122,8 +1204,10 @@
       const [analyzingId, setAnalyzingId] = useState(null);
       const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
       const [isUploading, setIsUploading] = useState(false);
+      const [isFetchingNews, setIsFetchingNews] = useState(false);
       const [showNotifPanel, setShowNotifPanel] = useState(false);
       const [editingAnalysisIssue, setEditingAnalysisIssue] = useState(null);
+      const [potensiIsuList, setPotensiIsuList] = useState([]);
 
       const showToast = (message, type = 'info') => {
         setToast({ show: true, message: typeof message === 'string' ? message : "Terjadi kesalahan", type });
@@ -1158,12 +1242,23 @@
         const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), orderBy('createdAt', 'desc'));
         const unsubscribeIssues = onSnapshot(q, (snapshot) => {
           const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          
           const actualIssues = data.filter(d => !['SETTING_POTENSI_MINGGUAN', 'SETTING_POTENSI_ISU_DATA'].includes(d.id));
           setIssues(actualIssues);
         }, (error) => { showToast("Gagal memuat data isu", "error"); });
 
+        const docRefPotensi = doc(db, 'artifacts', appId, 'public', 'data', 'issues', 'SETTING_POTENSI_ISU_DATA');
+        const unsubscribePotensi = onSnapshot(docRefPotensi, (docSnap) => {
+          if (docSnap.exists()) {
+             setPotensiIsuList(docSnap.data().data || []);
+          } else {
+             setPotensiIsuList([]);
+          }
+        });
+
         return () => {
           unsubscribeIssues();
+          unsubscribePotensi();
         };
       }, [user]);
 
@@ -1208,11 +1303,25 @@
             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', editingIssue.id), finalData);
             showToast("Diperbarui", "success");
           } else {
-            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), { ...finalData, handlingRecords: [], status: 'Belum Ditangani', createdAt: new Date().toISOString() });
+            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), { ...finalData, status: 'Belum Ditangani', createdAt: new Date().toISOString() });
             showToast("Ditambahkan", "success");
           }
           setIsIssueModalOpen(false); setEditingIssue(null);
         } catch (error) { showToast("Gagal", "error"); } finally { setIsUploading(false); }
+      };
+
+      const savePotensiIsu = async (updatedArray) => {
+        if (userRole !== 'admin') return;
+        try {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', 'SETTING_POTENSI_ISU_DATA'), {
+            isSetting: true,
+            data: updatedArray,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+          showToast("Daftar Isu Prioritas berhasil diperbarui", "success");
+        } catch (err) {
+          showToast("Gagal menyimpan Isu Prioritas", "error");
+        }
       };
 
       const deleteIssue = async (id) => {
@@ -1223,59 +1332,20 @@
         } catch (error) { showToast("Gagal", "error"); }
       };
 
-      // PEMBARUAN PADA PENYIMPANAN PENANGANAN (MULTIPLE RECORDS)
-      const saveHandlingUpdate = async (agencyName, handlingDate, status, notes, attachmentFile) => {
+      const saveHandlingUpdate = async (status, notes, attachmentFile, handlingDate) => {
         if (!handlingIssue) return;
         try {
           setIsUploading(true);
-          
-          // 1. Upload lampiran baru jika ada
-          let newAttachmentUrl = null;
-          if (attachmentFile) {
-              newAttachmentUrl = await uploadFileToStorage(attachmentFile, 'handling');
-          }
+          let handlingAttachmentUrl = handlingIssue.handlingAttachmentUrl || null;
+          if (attachmentFile) handlingAttachmentUrl = await uploadFileToStorage(attachmentFile, 'handling');
 
-          // 2. Tarik riwayat penanganan lama
-          let currentRecords = handlingIssue.handlingRecords || [];
-          
-          // 3. Cek apakah instansi ini sudah pernah lapor, kalau sudah, update datanya. Kalau belum, tambah baru.
-          const existingIndex = currentRecords.findIndex(r => r.agency === agencyName);
-          
-          const recordData = {
-              agency: agencyName,
-              date: handlingDate,
-              status: status,
-              notes: notes,
-              attachmentUrl: newAttachmentUrl || (existingIndex >= 0 ? currentRecords[existingIndex].attachmentUrl : null),
-              updatedAt: new Date().toISOString()
-          };
-
-          if (existingIndex >= 0) {
-              currentRecords[existingIndex] = recordData;
-          } else {
-              currentRecords.push(recordData);
-          }
-
-          // 4. Update status utama isu (Berdasarkan status laporan terakhir/terbaru dari semua instansi)
-          // Cari record dengan tanggal paling baru
-          const sortedRecords = [...currentRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
-          const mainStatus = sortedRecords.length > 0 ? sortedRecords[0].status : 'Belum Ditangani';
-
-          // 5. Simpan ke database
           await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', handlingIssue.id), {
-            status: mainStatus,
-            handlingRecords: currentRecords,
+            status, handlingNotes: notes, handlingAttachmentUrl, handlingDate, handlingUpdatedAt: new Date().toISOString(), handlingUpdatedBy: userProfile.name
           });
-          
-          showToast("Tindak lanjut berhasil disimpan", "success");
+          showToast("Update tersimpan", "success");
           setHandlingIssue(null);
-          setViewingIssue({...handlingIssue, status: mainStatus, handlingRecords: currentRecords});
-        } catch (error) { 
-            console.error(error);
-            showToast("Gagal menyimpan data", "error"); 
-        } finally { 
-            setIsUploading(false); 
-        }
+          setViewingIssue({...handlingIssue, status, handlingNotes: notes, handlingAttachmentUrl, handlingDate});
+        } catch (error) { showToast("Gagal", "error"); } finally { setIsUploading(false); }
       };
 
       const saveAnalysisEdit = async (id, updatedAnalysis) => {
@@ -1293,122 +1363,178 @@
         showToast(!currentStatus ? "Dipublish" : "Ditarik (Unpublish)", "success");
       };
 
+      const handleFetchNews = async () => {
+        if (userRole !== 'admin') return;
+        if (GNEWS_API_KEY.includes("MASUKKAN")) return showToast("API Key belum diset", "error");
+        
+        setIsFetchingNews(true); 
+        showToast("Mencari berita...", "info");
+        
+        try {
+          const q = encodeURIComponent('Pemkot Bandung');
+          let data;
+          
+          try {
+            const res = await fetch(`https://gnews.io/api/v4/search?q=${q}&lang=id&country=id&max=10&apikey=${GNEWS_API_KEY}`);
+            if (!res.ok) {
+              const errData = await res.json().catch(()=>({}));
+              throw new Error(errData.errors ? errData.errors[0] : "Akses ke GNews ditolak atau limit habis.");
+            }
+            data = await res.json();
+          } catch (fetchError) {
+            if (fetchError.message === 'Failed to fetch') {
+              console.warn("CORS Blocked by browser preview. Injecting mock data.");
+              showToast("Akses API diblokir preview browser. Menggunakan data simulasi...", "info");
+              
+              await new Promise(resolve => setTimeout(resolve, 1500)); 
+              
+              data = {
+                articles: [
+                  {
+                    title: "Pemkot Bandung Percepat Penanganan Banjir di Gedebage",
+                    publishedAt: new Date().toISOString(),
+                    source: { name: "Bandung News" },
+                    url: "https://bandung.go.id",
+                    description: "Pemerintah Kota Bandung di bawah arahan Muhammad Farhan menginstruksikan Dinas PU untuk mempercepat proyek infrastruktur pengendali banjir..."
+                  },
+                  {
+                    title: "Disdik Kota Bandung Luncurkan Program Sekolah Inklusif Unggulan",
+                    publishedAt: new Date().toISOString(),
+                    source: { name: "Pikiran Rakyat" },
+                    url: "https://pikiran-rakyat.com",
+                    description: "Dinas Pendidikan Kota Bandung meresmikan program baru guna memastikan pemerataan pendidikan yang ramah anak."
+                  }
+                ]
+              };
+            } else {
+              throw fetchError;
+            }
+          }
+          
+          if (!data || !data.articles) throw new Error("Format data berita tidak valid");
+          
+          let added = 0;
+          for (const article of data.articles) {
+            if (!issues.some(i => i.title.toLowerCase() === article.title.toLowerCase())) {
+              await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), {
+                sourceType: 'Media Online', title: article.title, date: article.publishedAt.split('T')[0], domain: article.source.name,
+                link: article.url, content: article.description, sentiment: 'Netral', leadingSector: 'Lainnya', issueCategories: ['Lainnya'], status: 'Belum Ditangani', createdAt: new Date().toISOString()
+              });
+              added++;
+            }
+          }
+          showToast(added > 0 ? `Berhasil menarik ${added} berita` : "Semua berita sudah ada", added > 0 ? "success" : "info");
+          
+        } catch (e) { 
+          console.error("Detail Error GNews:", e);
+          showToast(`${e.message}`, "error"); 
+        } finally { 
+          setIsFetchingNews(false); 
+        }
+      };
+
       const handleAnalyzeAI = async (issue) => {
         if (userRole !== 'admin') return;
-        
-        if (!OPENAI_API_KEY || OPENAI_API_KEY.includes("MASUKKAN")) {
-            showToast("OpenAI API Key belum diatur di kode.", "error");
-            return;
-        }
-
-        setAnalyzingId(issue.id); showToast("AI menganalisis...", "info");
+        setAnalyzingId(issue.id); 
+        showToast("AI sedang menganalisis...", "info");
         
         try {
           const sectorsStr = (issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ');
-          const prompt = `Sebagai analis kebijakan ahli Pemerintah Kota Bandung era Muhammad Farhan, analisislah isu: Judul: ${issue.title}. Detail: ${issue.content || issue.caption || 'Tidak ada detail'}. Sektor: ${sectorsStr}. 
-          Tugas:
-          1. Buat 'analysis' mendalam.
-          2. Buat 'policyRecommendation' dengan memberikan rekomendasi sebanyak mungkin yang relevan dengan visi misi program Pemkot Bandung era Muhammad Farhan. Pisahkan setiap rekomendasi dengan nomor ke bawah, dan SETIAP REKOMENDASI WAJIB diawali dengan kata kerja "Me...".
-          3. Buat 'publicationRecommendation' (sama, bernomor ke bawah, wajib diawali "Me...").
-          Format keluaran HARUS berupa JSON murni dengan struktur: {"analysis": "...", "policyRecommendation": "1. Me...\\n2. Me...", "publicationRecommendation": "1. Me...\\n2. Me..."}`;
           
+          let additionalContext = '';
+          let instructionContext = '';
+          if (issue.sourceType === 'Media Sosial') {
+              let commentsStr = (issue.comments || []).map((c, i) => `${i+1}. [${c.sentiment}] @${c.account || 'anonim'}: ${c.content}`).join('\n');
+              if (commentsStr) {
+                  additionalContext = `\n\nKomentar Netizen:\n${commentsStr}`;
+                  instructionContext = ` Khusus untuk isu media sosial ini, berikan analisis yang mempertimbangkan baik isi postingan (caption) maupun pola respon/sentimen komentar netizen yang ada.`;
+              }
+          }
+
+          const prompt = `Sebagai analis kebijakan ahli Pemerintah Kota Bandung, analisislah isu berikut:
+Judul: ${issue.title}
+Kategori Isu: ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}
+Detail: ${issue.content || issue.caption || 'Tidak ada detail'}
+Sektor: ${sectorsStr}${additionalContext}
+
+Tugas Anda:
+1. Buat 'analysis' (Analisis Isu) SECARA DESKRIPTIF PERSIS DUA PARAGRAF. Paragraf 1: Menjelaskan konteks isu secara komprehensif berdasarkan informasi atau komentar netizen yang diinputkan. Paragraf 2: Menjelaskan secara tegas dampak dari isu tersebut jika tidak segera ditindaklanjuti oleh Pemerintah Kota Bandung. Gunakan karakter newline (\\n\\n) untuk memisahkan kedua paragraf tersebut.
+2. Buat 'policyRecommendation' (Rekomendasi Kebijakan) operasional untuk Pemkot Bandung. WAJIB berupa daftar bernomor (1., 2., dst) yang setiap angkanya dipisahkan dengan baris baru (newline). Setiap poin daftar WAJIB diawali dengan kata kerja berawalan "Me...".
+3. Buat 'publicationRecommendation' (Rekomendasi Publikasi) untuk Humas. WAJIB berupa daftar bernomor (1., 2., dst) yang setiap angkanya dipisahkan dengan baris baru (newline). Setiap poin daftar WAJIB diawali dengan kata kerja berawalan "Me...".
+
+Format KELUARAN HARUS berupa JSON murni dengan struktur: 
+{"analysis": "Paragraf 1...\\n\\nParagraf 2...", "policyRecommendation": "1. Me...\\n2. Me...", "publicationRecommendation": "1. Me...\\n2. Me..."}`;
+
           let aiResult = null;
           
           try {
-              const res = await fetch('https://api.openai.com/v1/chat/completions', {
-                 method: 'POST',
-                 headers: {
-                     'Content-Type': 'application/json',
-                     'Authorization': `Bearer ${OPENAI_API_KEY}`
-                 },
-                 body: JSON.stringify({
-                     model: 'gpt-4o-mini',
-                     messages: [
-                         { role: 'system', content: 'You are a helpful policy analyst assistant. Always respond with raw valid JSON.' },
-                         { role: 'user', content: prompt }
-                     ],
-                     response_format: { type: "json_object" }
-                 })
+            if (GOOGLE_SCRIPT_URL && !GOOGLE_SCRIPT_URL.includes("MASUKKAN")) {
+              const payload = {
+                 messages: [
+                     { role: 'system', content: 'You are a helpful policy analyst assistant. Always respond with raw valid JSON.' },
+                     { role: 'user', content: prompt }
+                 ]
+              };
+
+              const response = await fetch(GOOGLE_SCRIPT_URL, { 
+                  method: 'POST', 
+                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                  body: JSON.stringify(payload) 
               });
+              
+              const textResult = await response.text();
+              let jsonResult;
+              
+              try { jsonResult = JSON.parse(textResult); } catch (e) { throw new Error("Respons Backend tidak valid."); }
 
-              const textRes = await res.text();
-              let resultData;
-              try {
-                  resultData = JSON.parse(textRes);
-              } catch (e) {
-                  throw new Error("OpenAI mengembalikan format yang tidak valid atau kosong.");
-              }
+              if (jsonResult.error) throw new Error(typeof jsonResult.error === 'string' ? jsonResult.error : (jsonResult.error.message || "Error dari API"));
 
-              if (resultData.error) throw new Error(resultData.error.message);
-              
-              const contentText = resultData.choices[0].message.content || "{}";
-              aiResult = JSON.parse(contentText);
-          } catch (openaiError) {
-              const errMsg = openaiError?.message?.toLowerCase() || "";
-              const isQuotaError = errMsg.includes("quota") || errMsg.includes("exceeded") || errMsg.includes("billing") || errMsg.includes("429") || errMsg.includes("failed to fetch") || errMsg.includes("network error");
-              
-              if (!isQuotaError) {
-                  console.error("OpenAI Error:", openaiError);
-              }
-              
-              if (isQuotaError) {
-                  showToast("Koneksi/Kuota OpenAI habis. Menggunakan AI Cadangan gratis...", "info");
-                  
-                  const apiKey = ""; 
-                  const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                          contents: [{ parts: [{ text: prompt }] }],
-                          generationConfig: {
-                              responseMimeType: "application/json",
-                              responseSchema: {
-                                  type: "OBJECT",
-                                  properties: {
-                                      analysis: { type: "STRING" },
-                                      policyRecommendation: { type: "STRING" },
-                                      publicationRecommendation: { type: "STRING" }
-                                  },
-                                  required: ["analysis", "policyRecommendation", "publicationRecommendation"]
-                              }
-                          }
-                      })
-                  });
-                  
-                  const geminiTextRes = await geminiRes.text();
-                  let geminiData;
-                  try {
-                      geminiData = JSON.parse(geminiTextRes);
-                  } catch (e) {
-                      throw new Error("API Gemini mengembalikan respons kosong atau tidak valid.");
-                  }
-                  
-                  if (geminiData.error) throw new Error(geminiData.error.message);
-                  
-                  let geminiOutput = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-                  geminiOutput = geminiOutput.replace(/```json/g, '').replace(/```/g, '').trim();
-                  
-                  try {
-                      aiResult = JSON.parse(geminiOutput);
-                  } catch (parseError) {
-                      throw new Error("Gagal membaca hasil analisis dari AI Cadangan.");
-                  }
-              } else {
-                  throw openaiError; 
-              }
+              let rawContent = "{}";
+              if (jsonResult.choices && jsonResult.choices.length > 0) rawContent = jsonResult.choices[0].message.content;
+              else if (jsonResult.status === 'success') rawContent = jsonResult.data;
+              else throw new Error("Format respons tidak dikenali dari server AI.");
+
+              let cleanData = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
+              aiResult = JSON.parse(cleanData);
+            } else {
+              throw new Error("URL Backend belum diatur di kode.");
+            }
+          } catch (backendError) {
+            console.warn("Info Backend:", backendError.message);
+            showToast("Backend bermasalah/API Key belum diset. Beralih ke AI Cadangan gratis...", "info");
+            
+            const apiKey = ""; 
+            const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: { analysis: { type: "STRING" }, policyRecommendation: { type: "STRING" }, publicationRecommendation: { type: "STRING" } },
+                            required: ["analysis", "policyRecommendation", "publicationRecommendation"]
+                        }
+                    }
+                })
+            });
+            
+            const geminiTextRes = await geminiRes.text();
+            let geminiData;
+            try { geminiData = JSON.parse(geminiTextRes); } catch (e) { throw new Error("API Gemini mengembalikan respons tidak valid."); }
+            if (geminiData.error) throw new Error(geminiData.error.message);
+            
+            let geminiOutput = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+            geminiOutput = geminiOutput.replace(/```json/g, '').replace(/```/g, '').trim();
+            try { aiResult = JSON.parse(geminiOutput); } catch (e) { throw new Error("Gagal membaca hasil analisis AI Cadangan."); }
           }
 
           if (aiResult) {
-              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', issue.id), { aiAnalysis: aiResult, analyzedAt: new Date().toISOString() });
-              showToast("Selesai dianalisis", "success");
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', issue.id), { aiAnalysis: aiResult, analyzedAt: new Date().toISOString() });
+            showToast("Analisis AI selesai", "success");
           }
-          
-        } catch (e) { 
-            console.error(e);
-            let errMsg = "Gagal analisis (Cek Console/API Key)";
-            if (e.message.toLowerCase().includes("quota") || e.message.toLowerCase().includes("exceeded")) errMsg = "API Key kehabisan kuota limit.";
-            if (e.message.includes("kosong") || e.message.includes("valid")) errMsg = e.message;
-            showToast(errMsg, "error"); 
+        } catch (error) { 
+            console.error("Detail Error Analisis:", error); showToast("Gagal analisis. " + error.message, "error"); 
         } finally { setAnalyzingId(null); }
       };
 
@@ -1430,10 +1556,9 @@
                 <tr><td style="font-weight: bold; vertical-align: top;">Tautan / Link</td><td style="vertical-align: top;">: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
             `;
         } else {
-            const accountStr = (issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-';
             mediaInfo = `
                 <tr><td style="font-weight: bold; vertical-align: top;">Platform</td><td style="vertical-align: top;">: ${(issue.platforms || [issue.platform]).filter(Boolean).join(', ') || '-'}</td></tr>
-                <tr><td style="font-weight: bold; vertical-align: top;">Akun Sumber</td><td style="vertical-align: top;">: ${accountStr}</td></tr>
+                <tr><td style="font-weight: bold; vertical-align: top;">Akun Sumber</td><td style="vertical-align: top;">: ${(issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-'}</td></tr>
                 <tr><td style="font-weight: bold; vertical-align: top;">Tautan / Link</td><td style="vertical-align: top;">: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
             `;
         }
@@ -1497,10 +1622,9 @@
                   <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
               `;
           } else {
-              const accountStr = (issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-';
               mediaInfo = `
                   <tr><td style="font-weight: bold;">Platform</td><td>: ${(issue.platforms || [issue.platform]).filter(Boolean).join(', ') || '-'}</td></tr>
-                  <tr><td style="font-weight: bold;">Akun Sumber</td><td>: ${accountStr}</td></tr>
+                  <tr><td style="font-weight: bold;">Akun Sumber</td><td>: ${(issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-'}</td></tr>
                   <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
               `;
           }
@@ -1557,10 +1681,9 @@
                       <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
                   `;
               } else {
-                  const accountStr = (issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-';
                   mediaInfo = `
                       <tr><td style="font-weight: bold;">Platform</td><td>: ${(issue.platforms || [issue.platform]).filter(Boolean).join(', ') || '-'}</td></tr>
-                      <tr><td style="font-weight: bold;">Akun Sumber</td><td>: ${accountStr}</td></tr>
+                      <tr><td style="font-weight: bold;">Akun Sumber</td><td>: ${(issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-'}</td></tr>
                       <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
                   `;
               }
@@ -1718,7 +1841,7 @@
           text += `*3. Rekomendasi Publikasi:*\n${issue.aiAnalysis.publicationRecommendation}\n\n`;
         }
         
-        text += `Demikian analisis isu yang dapat Kami sampaikan. Terimakasih.\n\nTembusan:\nYth. Bapak Wakil Wali Kota Bandung\nYth. Bapak Sekretaris Daerah Kota Bandung`;
+        text += `Demikian analisis isu yang dapat Kami sampaikan. Terimakasih.\n\nTembusan:\nYth. Bapak Sekretaris Daerah Kota Bandung`;
         
         const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
@@ -1793,15 +1916,15 @@
               </div>
             </header>
             <div className="flex-1 overflow-y-auto p-5 scroll-smooth"><div className="max-w-7xl mx-auto">
-              {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} />}
+              {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} potensiIsuList={potensiIsuList} role={userRole} onSavePotensiIsu={savePotensiIsu} showToast={showToast} />}
               {activeTab === 'social' && <DataTableView title="Media Sosial" type="Media Sosial" issues={issues.filter(i=>i.sourceType==='Media Sosial')} onAdd={()=>setIsIssueModalOpen('Media Sosial')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Sosial');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
-              {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
+              {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} onFetchNews={handleFetchNews} isFetchingNews={isFetchingNews} />}
               {activeTab === 'print' && <DataTableView title="Media Cetak" type="Media Cetak" issues={issues.filter(i=>i.sourceType==='Media Cetak')} onAdd={()=>setIsIssueModalOpen('Media Cetak')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Cetak');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
               {activeTab === 'analysis' && <AnalysisView issues={issues} role={userRole} agency={userProfile?.agency} onAnalyze={handleAnalyzeAI} analyzingId={analyzingId} onView={setViewingIssue} onPublishToggle={togglePublishAnalysis} onEditAnalysis={setEditingAnalysisIssue} onDelete={deleteIssue} onDownloadAll={handleDownloadAllWord} onDownloadRecap={handleDownloadRecapWord} />}
             </div></div>
             
             {isIssueModalOpen && <IssueModal type={isIssueModalOpen} onClose={() => {setIsIssueModalOpen(false); setEditingIssue(null);}} onSave={saveIssue} initialData={editingIssue} isUploading={isUploading}/>}
-            {handlingIssue && <HandlingModal issue={handlingIssue} onClose={() => {setHandlingIssue(null); setViewingIssue(handlingIssue);}} onSave={saveHandlingUpdate} isUploading={isUploading} agencyRole={userRole === 'admin' ? 'admin' : userProfile?.agency}/>}
+            {handlingIssue && <HandlingModal issue={handlingIssue} onClose={() => {setHandlingIssue(null); setViewingIssue(handlingIssue);}} onSave={saveHandlingUpdate} isUploading={isUploading}/>}
             {editingAnalysisIssue && <AnalysisEditModal issue={editingAnalysisIssue} onClose={() => setEditingAnalysisIssue(null)} onSave={saveAnalysisEdit} isUploading={isUploading}/>}
 
             {viewingIssue && (
@@ -1898,43 +2021,16 @@
                           )}
                           
                           <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                            <div className="flex justify-between items-center mb-4">
-                               <p className="text-sm font-bold text-slate-500">Riwayat Penanganan</p>
-                               {(() => {
-                                  const sectors = viewingIssue.leadingSectors || [viewingIssue.leadingSector];
-                                  if (userRole === 'admin' || (userRole === 'pd' && sectors.includes(userProfile?.agency))) {
-                                      return <button onClick={() => {setHandlingIssue(viewingIssue); setViewingIssue(null);}} className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] flex items-center shadow hover:bg-emerald-700 transition-colors"><Plus size={12} className="mr-1"/> Tambah/Update</button>;
-                                  }
-                                  return null;
-                               })()}
-                            </div>
-                            
-                            {/* Menampilkan Status Keseluruhan */}
-                            <div className="mb-4 pb-4 border-b border-slate-200">
-                                <p className="text-xs text-slate-500 mb-1">Status Akhir Isu:</p>
-                                <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${viewingIssue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : viewingIssue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{viewingIssue.status || 'Belum Ditangani'}</span>
-                            </div>
-
-                            {/* Daftar Riwayat Penanganan dari Berbagai PD */}
-                            <div className="space-y-4 max-h-64 overflow-y-auto custom-scrollbar pr-2">
-                               {viewingIssue.handlingRecords && viewingIssue.handlingRecords.length > 0 ? (
-                                  [...viewingIssue.handlingRecords].sort((a,b) => new Date(b.date) - new Date(a.date)).map((rec, idx) => (
-                                      <div key={idx} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm relative">
-                                          <div className="flex justify-between items-start mb-2">
-                                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">{rec.agency}</span>
-                                              <span className="text-[10px] text-slate-400">{rec.date}</span>
-                                          </div>
-                                          <p className="text-xs font-bold text-slate-700 mb-1">Status: {rec.status}</p>
-                                          {rec.notes && <p className="text-sm text-slate-600 whitespace-pre-wrap">{rec.notes}</p>}
-                                          {rec.attachmentUrl && (
-                                            <a href={rec.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-2 bg-slate-100 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 px-2 py-1 rounded font-bold text-[10px] transition-colors"><ImageIcon size={12} className="mr-1"/> Lampiran</a>
-                                          )}
-                                      </div>
-                                  ))
-                               ) : (
-                                  <p className="text-xs text-slate-400 text-center py-2">Belum ada catatan tindak lanjut dari Perangkat Daerah terkait.</p>
-                               )}
-                            </div>
+                            <p className="text-sm font-bold text-slate-500 mb-2">Status Penanganan</p>
+                            <p className="text-sm font-bold mb-1">Status: {viewingIssue.status}</p>
+                            {viewingIssue.handlingDate && <p className="text-[11px] text-slate-500 font-medium mb-2">Tgl Penanganan: {viewingIssue.handlingDate}</p>}
+                            {viewingIssue.handlingNotes && <p className="text-sm border-t border-slate-200 pt-2 mt-2">{viewingIssue.handlingNotes}</p>}
+                            {viewingIssue.handlingAttachmentUrl && (
+                              <a href={viewingIssue.handlingAttachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-3 bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg font-bold text-xs"><ImageIcon size={14} className="mr-1"/> Lihat Bukti Penanganan</a>
+                            )}
+                            {(userRole === 'admin' || (viewingIssue.leadingSectors || []).includes(userProfile?.agency)) && (
+                              <button onClick={() => {setHandlingIssue(viewingIssue); setViewingIssue(null);}} className="w-full mt-4 bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm flex items-center justify-center shadow-md"><Edit2 size={16} className="mr-2"/> Update Penanganan</button>
+                            )}
                           </div>
                        </div>
                        
@@ -1943,7 +2039,7 @@
                          {viewingIssue.aiAnalysis && (userRole === 'admin' || userRole === 'pimpinan' || (viewingIssue.leadingSectors || [viewingIssue.leadingSector]).includes(userProfile?.agency)) ? (
                             <div className="bg-amber-50 p-6 rounded-xl border border-amber-200 h-full flex flex-col shadow-sm">
                               <div className="flex flex-wrap justify-between items-start mb-5 border-b border-amber-200 pb-4 gap-2">
-                                 <h4 className="font-bold text-amber-900 flex items-center text-lg"><Brain className="mr-2 text-amber-600"/> Hasil Analisis & Rekomendasi</h4>
+                                 <h4 className="font-bold text-amber-900 flex items-center text-lg"><BrainCircuit className="mr-2 text-amber-600"/> Hasil Analisis & Rekomendasi</h4>
                                  <div className="flex gap-2">
                                      <button onClick={() => handleDownloadWord(viewingIssue)} className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">DOCX</button>
                                      <button onClick={() => handleDownloadPDF(viewingIssue)} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">PDF</button>
