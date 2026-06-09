@@ -62,9 +62,6 @@
       initializeFirestore, doc, setDoc, getDoc, collection, onSnapshot, 
       addDoc, updateDoc, deleteDoc, query, orderBy, where
     } from 'https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js';
-    import { 
-      getStorage, ref, uploadBytesResumable, getDownloadURL 
-    } from 'https://www.gstatic.com/firebasejs/10.5.0/firebase-storage.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyBgdRBGLeU47SxYGMlArfLbgPwVHtRpFQ4",
@@ -79,11 +76,9 @@
     const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
     const auth = app ? getAuth(app) : null;
     const db = app ? initializeFirestore(app, { experimentalForceLongPolling: true }) : null;
-    const storage = app ? getStorage(app) : null;
     const appId = 'media-analytics-bdg';
 
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzaia1vrwDGIIarTC1u0YXaHWA_-1Lz-LgH0SsR0H-o65o7T9OdYfJcNqjBte3NJQmDCA/exec';
-
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxfYsICDQuO9zSEXbt3DAa3wLQzQFT0_PJpmYxucObovR48hoIHt6ZVDVdvGC-z-dz2Kw/exec';
     const OPENAI_API_KEY = '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';
 
     const LEADING_SECTORS = [
@@ -96,7 +91,7 @@
       "Dinas Penanaman Modal dan Pelayanan Terpadu Satu Pintu", "Dinas Pendidikan", "Dinas Pengendalian Penduduk dan Keluarga Berencana", 
       "Dinas Perdagangan dan Perindustrian", "Dinas Perhubungan", "Dinas Perumahan dan Kawasan Permukiman", "Dinas Sosial", 
       "Dinas Arsip dan Perpustakaan", "Bagian Tata Pemerintahan", "Bagian Kesejahteraan Rakyat", "Bagian Kerja Sama", 
-      "Bagian Perekonomian", "Bagian Hukum", "Bagian Umum", "Bagian Administrasi Pembangunan", "Bagian Pengadaan Barang/Jasa", 
+      "Bagian Perekonomian", "Bagian Hukum", "Bagian Umum", "Bagian Adminstrasi Pembangunan", "Bagian Pengadaan Barang/Jasa", 
       "Bagian Organisasi", "Bagian Perencanaan, Keuangan dan Kepegawaian", "Bagian Protokol dan Komunikasi Pimpinan", 
       "Rumah Sakit Umum Daerah", "RSUD Bandung Kiwari", "Rumah Sakit Khusus Gigi dan Mulut", 
       "PT BII", "Perumda Tirtawening", "Perumda Pasar", "Bank Bandung", 
@@ -272,6 +267,7 @@
       const [isEditingPotensi, setIsEditingPotensi] = useState(false);
       const [selectedPotensiId, setSelectedPotensiId] = useState('');
       const [editDataPotensi, setEditDataPotensi] = useState({ id: '', month: '', year: '', points: [''] });
+      const [confirmDialog, setConfirmDialog] = useState(null);
 
       const currentPotensi = useMemo(() => {
           if (!potensiIsuList || potensiIsuList.length === 0) return null;
@@ -294,18 +290,22 @@
       };
 
       const handleDeletePotensi = () => {
-          if(currentPotensi && window.confirm("Hapus riwayat daftar ini?")) {
-              const newArr = potensiIsuList.filter(m => m.id !== currentPotensi.id);
-              onSavePotensiIsu(newArr);
-              setSelectedPotensiId('');
-          }
+          if(!currentPotensi) return;
+          setConfirmDialog({
+              title: "Hapus Isu Prioritas",
+              message: "Yakin ingin menghapus daftar ini?",
+              onConfirm: () => {
+                  const newArr = potensiIsuList.filter(m => m.id !== currentPotensi.id);
+                  onSavePotensiIsu(newArr);
+                  setSelectedPotensiId('');
+              }
+          });
       };
 
       const handleSavePotensi = () => {
           const cleanPoints = editDataPotensi.points.filter(p => p.trim() !== '');
           if(cleanPoints.length === 0) {
-             if (showToast) showToast("Minimal masukkan 1 poin daftar", "error");
-             else alert("Minimal masukkan 1 poin daftar");
+             showToast("Minimal masukkan 1 poin daftar", "error");
              return;
           }
           const finalData = { ...editDataPotensi, points: cleanPoints };
@@ -556,6 +556,20 @@
               </div>
             </div>
           </div>
+
+          {confirmDialog && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden p-6 text-center">
+                <AlertTriangle size={48} className="mx-auto text-amber-500 mb-4" />
+                <h3 className="text-lg font-bold text-slate-800 mb-2">{confirmDialog.title}</h3>
+                <p className="text-sm text-slate-600 mb-6">{confirmDialog.message}</p>
+                <div className="flex justify-center gap-3">
+                  <button onClick={() => setConfirmDialog(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">Batal</button>
+                  <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-colors">Ya, Hapus</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -576,7 +590,6 @@
         return matches;
       });
 
-      // Mengurutkan berdasarkan tanggal terbaru dan membatasi maksimal 10 data
       const sortedIssues = [...filteredIssues].sort((a, b) => {
         const dateA = new Date(a.date || 0);
         const dateB = new Date(b.date || 0);
@@ -792,7 +805,7 @@
       );
     }
 
-    function IssueModal({ type, onClose, onSave, initialData, isUploading }) {
+    function IssueModal({ type, onClose, onSave, initialData, isUploading, showToast }) {
       const [formData, setFormData] = useState(() => {
         const defaultData = initialData || {
           sourceType: type,
@@ -1102,8 +1115,30 @@
               )}
 
               <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 border-dashed">
-                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center"><Upload size={16} className="mr-2 text-blue-600"/> Upload Lampiran (Opsional)</label>
-                <input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files[0])} className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700" />
+                <label className="block text-sm font-bold text-slate-700 mb-2 flex flex-col">
+                  <div className="flex items-center">
+                    <Upload size={16} className="mr-2 text-blue-600"/> Upload Lampiran (Opsional)
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-normal mt-1">Mendukung Gambar, Video, PDF, dan Word. Maksimal 3MB.</span>
+                </label>
+                <input 
+                  type="file" 
+                  accept="image/*,video/*,.pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                  onChange={(e) => {
+                    const selectedFile = e.target.files[0];
+                    if (selectedFile) {
+                        const maxSize = 3 * 1024 * 1024; // 3MB
+                        if (selectedFile.size > maxSize) {
+                            if (showToast) showToast("Ukuran file maksimal adalah 3MB", "error");
+                            e.target.value = null;
+                            setFile(null);
+                        } else {
+                            setFile(selectedFile);
+                        }
+                    }
+                  }} 
+                  className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700" 
+                />
               </div>
 
               <div className="pt-4 border-t flex justify-end gap-3 sticky bottom-0 bg-white">
@@ -1118,8 +1153,7 @@
       );
     }
 
-    function HandlingModal({ issue, onClose, onSave, isUploading, role, userAgency }) {
-      // Admin bisa memilih instansi mana saja yang menangani, PD terkunci ke nama instansinya.
+    function HandlingModal({ issue, onClose, onSave, isUploading, role, userAgency, showToast }) {
       const defaultAgency = role === 'pd' ? userAgency : (issue.leadingSectors?.[0] || issue.leadingSector || '');
       
       const [agency, setAgency] = useState(defaultAgency);
@@ -1169,8 +1203,30 @@
                </div>
                
                <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100 border-dashed">
-                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center"><Upload size={16} className="mr-2 text-emerald-600"/> Upload Bukti Penanganan</label>
-                <input type="file" accept="image/*,video/*" onChange={(e) => setFile(e.target.files[0])} className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-emerald-100 file:text-emerald-700" />
+                <label className="block text-sm font-bold text-slate-700 mb-2 flex flex-col">
+                  <div className="flex items-center">
+                    <Upload size={16} className="mr-2 text-emerald-600"/> Upload Bukti Penanganan
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-normal mt-1">Mendukung Gambar, Video, PDF, dan Word. Maksimal 3MB.</span>
+                </label>
+                <input 
+                  type="file" 
+                  accept="image/*,video/*,.pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                  onChange={(e) => {
+                    const selectedFile = e.target.files[0];
+                    if (selectedFile) {
+                        const maxSize = 3 * 1024 * 1024; // 3MB
+                        if (selectedFile.size > maxSize) {
+                            if (showToast) showToast("Ukuran file maksimal adalah 3MB", "error");
+                            e.target.value = null;
+                            setFile(null);
+                        } else {
+                            setFile(selectedFile);
+                        }
+                    }
+                  }} 
+                  className="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-emerald-100 file:text-emerald-700" 
+                />
               </div>
               
               <div className="pt-4 flex justify-end gap-3 border-t border-slate-100 mt-2">
@@ -1207,7 +1263,7 @@
 
     function App() {
       const [user, setUser] = useState(null);
-      const [userRole, setUserRole] = useState('pd');
+      const [userRole, setUserRole] = useState('pd'); // pd, admin, pimpinan
       const [userProfile, setUserProfile] = useState(null);
       const [isSidebarOpen, setIsSidebarOpen] = useState(true);
       const [activeTab, setActiveTab] = useState('dashboard');
@@ -1224,6 +1280,8 @@
       const [showNotifPanel, setShowNotifPanel] = useState(false);
       const [editingAnalysisIssue, setEditingAnalysisIssue] = useState(null);
       const [potensiIsuList, setPotensiIsuList] = useState([]);
+      const [isFetchingNews, setIsFetchingNews] = useState(false);
+      const [confirmDialog, setConfirmDialog] = useState(null);
 
       const showToast = (message, type = 'info') => {
         setToast({ show: true, message: typeof message === 'string' ? message : "Terjadi kesalahan", type });
@@ -1232,24 +1290,36 @@
 
       useEffect(() => {
         if (!auth) { setIsLoading(false); return; }
-        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+        let unsubProfile = null;
+        
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
           try {
             if (currentUser) {
               setUser(currentUser);
               const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'info');
-              const docSnap = await getDoc(docRef);
-              if (docSnap.exists()) {
-                setUserRole(docSnap.data().role || 'pd');
-                setUserProfile(docSnap.data());
-              }
+              unsubProfile = onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                  setUserRole(docSnap.data().role || 'pd');
+                  setUserProfile(docSnap.data());
+                } else {
+                  setUserProfile(null);
+                }
+              });
             } else {
               setUser(null); setUserRole('pd'); setUserProfile(null);
+              if (unsubProfile) unsubProfile();
             }
           } catch (err) {
-            if(err.code === 'auth/custom-token-mismatch') console.warn("Abaikan auto-login");
-          } finally { setIsLoading(false); }
+            console.warn("Auth Listener Error:", err);
+          } finally { 
+            setIsLoading(false); 
+          }
         });
-        return () => unsubscribe();
+        
+        return () => {
+          unsubscribe();
+          if (unsubProfile) unsubProfile();
+        };
       }, []);
 
       useEffect(() => {
@@ -1308,14 +1378,41 @@
       const handleLogout = async () => { if (auth) await signOut(auth); };
 
       const uploadFileToStorage = async (file, pathPrefix) => {
-        if (!storage) return null;
+        if (!file) return null;
         return new Promise((resolve, reject) => {
-          const fileName = `${pathPrefix}_${Date.now()}_${file.name}`;
-          const storageRef = ref(storage, `issues_attachments/${fileName}`);
-          const uploadTask = uploadBytesResumable(storageRef, file);
-          uploadTask.on('state_changed', null, (error) => reject(error), 
-            async () => { const downloadURL = await getDownloadURL(uploadTask.snapshot.ref); resolve(downloadURL); }
-          );
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = async () => {
+            try {
+              // Kirim request upload ke Google Apps Script Anda
+              const response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                  action: 'uploadFile',
+                  fileName: `${pathPrefix}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`,
+                  base64Data: reader.result
+                })
+              });
+              
+              const result = await response.json();
+              if (result.status === 'success') {
+                resolve(result.fileUrl); // Berhasil mendapatkan link Google Drive
+              } else {
+                let errMsg = result.message || "Gagal mengunggah ke Google Drive";
+                console.error("Backend response message:", errMsg);
+                // Deteksi error izin DriveApp untuk memberikan pesan yang lebih ramah
+                if (errMsg.includes("DriveApp") || errMsg.includes("izin") || errMsg.includes("permission") || errMsg.includes("Authorization")) {
+                   errMsg = "Akses Ditolak: Apps Script kekurangan izin 'DriveApp.createFolder'. Solusi: Buka editor Apps Script, tambahkan fungsi 'function PANCING() { DriveApp.createFolder(\"Test\"); }', jalankan fungsi PANCING tersebut, berikan izin, lalu wajib Deploy sebagai Versi Baru.";
+                }
+                reject(new Error(errMsg));
+              }
+            } catch (err) {
+              console.error("Upload error:", err);
+              reject(new Error("Gagal menghubungi server Google Drive. Cek koneksi atau deployment ID."));
+            }
+          };
+          reader.onerror = error => reject(error);
         });
       };
 
@@ -1335,7 +1432,7 @@
             showToast("Ditambahkan", "success");
           }
           setIsIssueModalOpen(false); setEditingIssue(null);
-        } catch (error) { showToast("Gagal", "error"); } finally { setIsUploading(false); }
+        } catch (error) { showToast(error.message || "Gagal", "error"); } finally { setIsUploading(false); }
       };
 
       const savePotensiIsu = async (updatedArray) => {
@@ -1360,15 +1457,23 @@
         } catch (error) { showToast("Gagal", "error"); }
       };
 
-      // FUNGSI BARU: Menyimpan riwayat penanganan ke dalam Array
+      const triggerDeleteIssue = (id) => {
+        setConfirmDialog({
+          title: "Hapus Isu",
+          message: "Apakah Anda yakin ingin menghapus isu ini beserta seluruh riwayatnya?",
+          onConfirm: () => deleteIssue(id)
+        });
+      };
+
       const saveHandlingUpdate = async (status, notes, attachmentFile, handlingDate, agency) => {
         if (!handlingIssue) return;
         try {
           setIsUploading(true);
           let handlingAttachmentUrl = null;
-          if (attachmentFile) handlingAttachmentUrl = await uploadFileToStorage(attachmentFile, 'handling');
+          if (attachmentFile) {
+             handlingAttachmentUrl = await uploadFileToStorage(attachmentFile, 'handling');
+          }
 
-          // Buat objek catatan penanganan baru
           const newHandlingRecord = {
             agency: agency,
             status: status,
@@ -1379,22 +1484,61 @@
             updatedAt: new Date().toISOString()
           };
 
-          // Ambil daftar riwayat penanganan saat ini (atau buat array kosong jika belum ada)
           const currentHandlingList = handlingIssue.handlingList || [];
           const updatedHandlingList = [...currentHandlingList, newHandlingRecord];
 
-          // Update dokumen isu utama di database
           await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', handlingIssue.id), {
-            status: status, // Update status global isu menjadi status terbaru
-            handlingList: updatedHandlingList // Timpa array lama dengan array yang baru ditambahkan
+            status: status, 
+            handlingList: updatedHandlingList 
           });
           
           showToast("Update penanganan tersimpan", "success");
           setHandlingIssue(null);
           
-          // Perbarui tampilan di pop-up secara real-time
           setViewingIssue({...handlingIssue, status: status, handlingList: updatedHandlingList});
-        } catch (error) { showToast("Gagal update penanganan", "error"); } finally { setIsUploading(false); }
+        } catch (error) { 
+            console.error(error);
+            showToast(error.message || "Gagal update penanganan", "error"); 
+        } finally { 
+            setIsUploading(false); 
+        }
+      };
+
+      const handleDeleteHandlingRecord = async (issueId, recordIndex) => {
+          if (userRole !== 'admin') return;
+          setConfirmDialog({
+              title: "Hapus Progress Penanganan",
+              message: "Yakin ingin menghapus catatan progres ini?",
+              onConfirm: async () => {
+                  try {
+                      const currentIssue = issues.find(i => i.id === issueId);
+                      if (!currentIssue) return;
+                      
+                      const currentList = currentIssue.handlingList || [];
+                      const updatedList = [...currentList];
+                      updatedList.splice(recordIndex, 1);
+                      
+                      let newStatus = 'Belum Ditangani';
+                      if (updatedList.length > 0) {
+                          newStatus = updatedList[updatedList.length - 1].status;
+                      }
+                      
+                      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', issueId), {
+                          handlingList: updatedList,
+                          status: newStatus
+                      });
+                      
+                      showToast("Riwayat penanganan berhasil dihapus", "success");
+                      
+                      if (viewingIssue && viewingIssue.id === issueId) {
+                          setViewingIssue(prev => ({...prev, handlingList: updatedList, status: newStatus}));
+                      }
+                  } catch (error) {
+                      console.error(error);
+                      showToast("Gagal menghapus riwayat penanganan", "error");
+                  }
+              }
+          });
       };
 
       const saveAnalysisEdit = async (id, updatedAnalysis) => {
@@ -1412,6 +1556,76 @@
         showToast(!currentStatus ? "Dipublish" : "Ditarik (Unpublish)", "success");
       };
 
+      const handleFetchNews = async () => {
+        if (userRole !== 'admin') return;
+        if (GNEWS_API_KEY.includes("MASUKKAN")) return showToast("API Key belum diset", "error");
+        
+        setIsFetchingNews(true); 
+        showToast("Mencari berita...", "info");
+        
+        try {
+          const q = encodeURIComponent('Pemkot Bandung');
+          let data;
+          
+          try {
+            const res = await fetch(`https://gnews.io/api/v4/search?q=${q}&lang=id&country=id&max=10&apikey=${GNEWS_API_KEY}`);
+            if (!res.ok) {
+              const errData = await res.json().catch(()=>({}));
+              throw new Error(errData.errors ? errData.errors[0] : "Akses ke GNews ditolak atau limit habis.");
+            }
+            data = await res.json();
+          } catch (fetchError) {
+            if (fetchError.message === 'Failed to fetch') {
+              console.warn("CORS Blocked by browser preview. Injecting mock data.");
+              showToast("Akses API diblokir preview browser. Menggunakan data simulasi...", "info");
+              
+              await new Promise(resolve => setTimeout(resolve, 1500)); 
+              
+              data = {
+                articles: [
+                  {
+                    title: "Pemkot Bandung Percepat Penanganan Banjir di Gedebage",
+                    publishedAt: new Date().toISOString(),
+                    source: { name: "Bandung News" },
+                    url: "https://bandung.go.id",
+                    description: "Pemerintah Kota Bandung di bawah arahan Muhammad Farhan menginstruksikan Dinas PU untuk mempercepat proyek infrastruktur pengendali banjir..."
+                  },
+                  {
+                    title: "Disdik Kota Bandung Luncurkan Program Sekolah Inklusif Unggulan",
+                    publishedAt: new Date().toISOString(),
+                    source: { name: "Pikiran Rakyat" },
+                    url: "https://pikiran-rakyat.com",
+                    description: "Dinas Pendidikan Kota Bandung meresmikan program baru guna memastikan pemerataan pendidikan yang ramah anak."
+                  }
+                ]
+              };
+            } else {
+              throw fetchError;
+            }
+          }
+          
+          if (!data || !data.articles) throw new Error("Format data berita tidak valid");
+          
+          let added = 0;
+          for (const article of data.articles) {
+            if (!issues.some(i => i.title.toLowerCase() === article.title.toLowerCase())) {
+              await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), {
+                sourceType: 'Media Online', title: article.title, date: article.publishedAt.split('T')[0], domain: article.source.name,
+                link: article.url, content: article.description, sentiment: 'Netral', leadingSector: 'Lainnya', status: 'Belum Ditangani', createdAt: new Date().toISOString()
+              });
+              added++;
+            }
+          }
+          showToast(added > 0 ? `Berhasil menarik ${added} berita` : "Semua berita sudah ada", added > 0 ? "success" : "info");
+          
+        } catch (e) { 
+          console.error("Detail Error GNews:", e);
+          showToast(`${e.message}`, "error"); 
+        } finally { 
+          setIsFetchingNews(false); 
+        }
+      };
+
       const handleAnalyzeAI = async (issue) => {
         if (userRole !== 'admin') return;
         
@@ -1420,137 +1634,107 @@
             return;
         }
 
-        setAnalyzingId(issue.id); showToast("AI sedang menganalisis...", "info");
+        setAnalyzingId(issue.id); showToast("AI sedang menganalisis (mohon tunggu)...", "info");
         
         try {
           const sectorsStr = (issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ');
           
           let additionalContext = '';
-          let instructionContext = '';
-          if (issue.sourceType === 'Media Sosial') {
-              let commentsStr = (issue.comments || []).map((c, i) => `${i+1}. [${c.sentiment}] @${c.account || 'anonim'}: ${c.content}`).join('\n');
-              if (commentsStr) {
-                  additionalContext = `\n\nKomentar Netizen:\n${commentsStr}`;
-                  instructionContext = ` Khusus untuk isu media sosial ini, berikan analisis yang mempertimbangkan baik isi postingan (caption) maupun pola respon/sentimen komentar netizen yang ada.`;
-              }
+          if (issue.sourceType === 'Media Sosial' && issue.comments && issue.comments.length > 0) {
+              const commentsStr = issue.comments.map((c, i) => `${i+1}. [${c.sentiment}] @${c.account || 'anonim'}: ${c.content}`).join('\n');
+              additionalContext = `\n\nKomentar Netizen:\n${commentsStr}`;
           }
 
           const prompt = `Sebagai analis kebijakan ahli Pemerintah Kota Bandung, analisislah isu berikut:
 Judul: ${issue.title}
-Kategori Isu: ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}
 Detail: ${issue.content || issue.caption || 'Tidak ada detail'}
 Sektor: ${sectorsStr}${additionalContext}
 
 Tugas Anda:
-1. Buat 'analysis' (Analisis Isu) SECARA DESKRIPTIF PERSIS DUA PARAGRAF. Paragraf 1: Menjelaskan konteks isu secara komprehensif berdasarkan informasi atau komentar netizen yang diinputkan. Paragraf 2: Menjelaskan secara tegas dampak dari isu tersebut jika tidak segera ditindaklanjuti oleh Pemerintah Kota Bandung. Gunakan karakter newline (\\n\\n) untuk memisahkan kedua paragraf tersebut.
-2. Buat 'policyRecommendation' (Rekomendasi Kebijakan) operasional untuk Pemkot Bandung. WAJIB berupa daftar bernomor (1., 2., dst) yang setiap angkanya dipisahkan dengan baris baru (newline). Setiap poin daftar WAJIB diawali dengan kata kerja berawalan "Me...".
-3. Buat 'publicationRecommendation' (Rekomendasi Publikasi) untuk Humas. WAJIB berupa daftar bernomor (1., 2., dst) yang setiap angkanya dipisahkan dengan baris baru (newline). Setiap poin daftar WAJIB diawali dengan kata kerja berawalan "Me...".
+1. Buat 'analysis' (Analisis Isu) SECARA DESKRIPTIF PERSIS DUA PARAGRAF. Paragraf 1: Menjelaskan konteks isu secara komprehensif. Paragraf 2: Menjelaskan secara tegas dampak jika tidak segera ditindaklanjuti. Gunakan karakter newline (\\n\\n) untuk memisahkan.
+2. Buat 'policyRecommendation' (Rekomendasi Kebijakan) operasional. Berupa daftar bernomor diawali "Me...".
+3. Buat 'publicationRecommendation' (Rekomendasi Publikasi). Berupa daftar bernomor diawali "Me...".
 
 Format KELUARAN HARUS berupa JSON murni dengan struktur: 
 {"analysis": "Paragraf 1...\\n\\nParagraf 2...", "policyRecommendation": "1. Me...\\n2. Me...", "publicationRecommendation": "1. Me...\\n2. Me..."}`;
 
-          let aiResult = null;
+          let rawContent = "";
           
           try {
-            if (GOOGLE_SCRIPT_URL && !GOOGLE_SCRIPT_URL.includes("MASUKKAN")) {
-              const payload = {
-                 messages: [
-                     { role: 'system', content: 'You are a helpful policy analyst assistant. Always respond with raw valid JSON.' },
-                     { role: 'user', content: prompt }
-                 ]
-              };
-
-              const response = await fetch(GOOGLE_SCRIPT_URL, { 
-                  method: 'POST', 
-                  headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                  body: JSON.stringify(payload) 
-              });
-              
-              const textResult = await response.text();
-              let jsonResult;
-              
-              try {
-                  jsonResult = JSON.parse(textResult);
-              } catch (e) {
-                  throw new Error("OpenAI mengembalikan format yang tidak valid atau kosong.");
-              }
-
-              if (jsonResult.error) throw new Error(typeof jsonResult.error === 'string' ? jsonResult.error : (jsonResult.error.message || "Error dari API"));
-
-              let rawContent = "{}";
-              if (jsonResult.choices && jsonResult.choices.length > 0) rawContent = jsonResult.choices[0].message.content;
-              else if (jsonResult.status === 'success') rawContent = jsonResult.data;
-              else throw new Error("Format respons tidak dikenali dari server AI.");
-
-              let cleanData = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
-              aiResult = JSON.parse(cleanData);
+            if (OPENAI_API_KEY && OPENAI_API_KEY.startsWith("sk-")) {
+                const res = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${OPENAI_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini",
+                        messages: [
+                            { role: "system", content: "You are a helpful policy analyst assistant. Always respond with raw valid JSON." },
+                            { role: "user", content: prompt }
+                        ],
+                        response_format: { type: "json_object" }
+                    })
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error.message);
+                rawContent = data.choices[0].message.content;
             } else {
-              throw new Error("URL Backend belum diatur di kode.");
+                throw new Error("OpenAI Key tidak ada, gunakan fallback.");
             }
-          } catch (backendError) {
-              const errMsg = backendError?.message?.toLowerCase() || "";
-              const isQuotaError = errMsg.includes("quota") || errMsg.includes("exceeded") || errMsg.includes("billing") || errMsg.includes("429") || errMsg.includes("failed to fetch") || errMsg.includes("network error");
-              
-              if (!isQuotaError) console.warn("Info Backend:", backendError.message);
-              
-              if (isQuotaError) {
-                  showToast("Koneksi/Kuota OpenAI bermasalah. Menggunakan AI Cadangan gratis...", "info");
-                  const apiKey = ""; 
-                  const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                          contents: [{ parts: [{ text: prompt }] }],
-                          generationConfig: {
-                              responseMimeType: "application/json",
-                              responseSchema: {
-                                  type: "OBJECT",
-                                  properties: {
-                                      analysis: { type: "STRING" },
-                                      policyRecommendation: { type: "STRING" },
-                                      publicationRecommendation: { type: "STRING" }
-                                  },
-                                  required: ["analysis", "policyRecommendation", "publicationRecommendation"]
-                              }
+          } catch (err) {
+              console.warn("Mencoba AI Cadangan (Gemini)...", err.message);
+              const apiKey = ""; 
+              const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      contents: [{ parts: [{ text: prompt }] }],
+                      generationConfig: {
+                          responseMimeType: "application/json",
+                          responseSchema: {
+                              type: "OBJECT",
+                              properties: { analysis: { type: "STRING" }, policyRecommendation: { type: "STRING" }, publicationRecommendation: { type: "STRING" } },
+                              required: ["analysis", "policyRecommendation", "publicationRecommendation"]
                           }
-                      })
-                  });
-                  
-                  const geminiTextRes = await geminiRes.text();
-                  let geminiData;
-                  try {
-                      geminiData = JSON.parse(geminiTextRes);
-                  } catch (e) {
-                      throw new Error("API Gemini mengembalikan respons kosong atau tidak valid.");
-                  }
-                  
-                  if (geminiData.error) throw new Error(geminiData.error.message);
-                  
-                  let geminiOutput = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-                  geminiOutput = geminiOutput.replace(/```json/g, '').replace(/```/g, '').trim();
-                  
-                  try {
-                      aiResult = JSON.parse(geminiOutput);
-                  } catch (parseError) {
-                      throw new Error("Gagal membaca hasil analisis dari AI Cadangan.");
-                  }
-              } else {
-                  throw backendError; 
-              }
+                      }
+                  })
+              });
+              const geminiData = await geminiRes.json();
+              if (geminiData.error) throw new Error(geminiData.error.message);
+              rawContent = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
           }
 
-          if (aiResult) {
-              await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', issue.id), { aiAnalysis: aiResult, analyzedAt: new Date().toISOString() });
-              showToast("Analisis AI selesai", "success");
+          let safeText = String(rawContent || "").trim();
+          safeText = safeText.replace(/```json/gi, '').replace(/```/g, '').trim();
+          
+          const startIdx = safeText.indexOf('{');
+          const endIdx = safeText.lastIndexOf('}');
+          if (startIdx !== -1 && endIdx !== -1) {
+              safeText = safeText.substring(startIdx, endIdx + 1);
+          } else {
+              safeText = "{}"; 
           }
+
+          let aiResult = JSON.parse(safeText);
+          
+          if (!aiResult.analysis || !aiResult.policyRecommendation) {
+              throw new Error("AI mengembalikan hasil kosong atau format tidak sesuai.");
+          }
+
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', issue.id), { 
+              aiAnalysis: aiResult, 
+              analyzedAt: new Date().toISOString() 
+          });
+          
+          showToast("Analisis AI selesai", "success");
           
         } catch (e) { 
-            console.error(e);
-            let errMsg = "Gagal analisis (Cek Console/API Key)";
-            if (e.message.toLowerCase().includes("quota") || e.message.toLowerCase().includes("exceeded")) errMsg = "API Key kehabisan kuota limit.";
-            if (e.message.includes("kosong") || e.message.includes("valid")) errMsg = e.message;
-            showToast(errMsg, "error"); 
-        } finally { setAnalyzingId(null); }
+            console.error("Detail Error Analisis:", e);
+            showToast("Gagal analisis: " + (e.message || "Kesalahan sistem."), "error"); 
+        } finally { 
+            setAnalyzingId(null); 
+        }
       };
 
       const handleDownloadPDF = (issue) => {
@@ -1558,92 +1742,35 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
             showToast("Library PDF belum termuat, silakan coba beberapa saat lagi.", "error");
             return;
         }
-        
-        let mediaInfo = '';
-        if (issue.sourceType === 'Media Cetak') {
-            mediaInfo = `
-                <tr><td style="font-weight: bold; vertical-align: top;">Jenis Media</td><td style="vertical-align: top;">: ${issue.printType || '-'}</td></tr>
-                <tr><td style="font-weight: bold; vertical-align: top;">Nama Media</td><td style="vertical-align: top;">: ${issue.mediaName || '-'}</td></tr>
-            `;
-        } else if (issue.sourceType === 'Media Online') {
-            mediaInfo = `
-                <tr><td style="font-weight: bold; vertical-align: top;">Domain</td><td style="vertical-align: top;">: ${(issue.domains || [issue.domain]).filter(Boolean).join(', ') || '-'}</td></tr>
-                <tr><td style="font-weight: bold; vertical-align: top;">Tautan / Link</td><td style="vertical-align: top;">: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
-            `;
-        } else {
-            mediaInfo = `
-                <tr><td style="font-weight: bold; vertical-align: top;">Platform</td><td style="vertical-align: top;">: ${(issue.platforms || [issue.platform]).filter(Boolean).join(', ') || '-'}</td></tr>
-                <tr><td style="font-weight: bold; vertical-align: top;">Akun Sumber</td><td style="vertical-align: top;">: ${(issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-'}</td></tr>
-                <tr><td style="font-weight: bold; vertical-align: top;">Tautan / Link</td><td style="vertical-align: top;">: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
-            `;
-        }
-        
         const content = document.createElement('div');
         content.innerHTML = `
-            <style>
-                .pdf-container { padding: 10px; font-family: 'Inter', sans-serif; color: #333; }
-                .pdf-title { color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px; page-break-after: avoid; }
-                .pdf-table { width: 100%; margin-bottom: 20px; font-size: 13px; line-height: 1.5; page-break-inside: avoid; }
-                .pdf-section { margin-top: 20px; page-break-inside: avoid; }
-                .pdf-section h3 { color: #0f172a; margin-bottom: 10px; page-break-after: avoid; }
-                .pdf-section p { white-space: pre-wrap; font-size: 13px; line-height: 1.6; }
-            </style>
-            <div class="pdf-container">
-                <h2 class="pdf-title">Laporan Analisis Isu</h2>
-                <table class="pdf-table">
-                    <tr><td style="width: 130px; font-weight: bold; vertical-align: top;">Judul</td><td style="vertical-align: top;">: ${issue.title}</td></tr>
-                    <tr><td style="font-weight: bold; vertical-align: top;">Tanggal</td><td style="vertical-align: top;">: ${issue.date}</td></tr>
-                    <tr><td style="font-weight: bold; vertical-align: top;">Kategori Isu</td><td style="vertical-align: top;">: ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}</td></tr>
-                    <tr><td style="font-weight: bold; vertical-align: top;">Media</td><td style="vertical-align: top;">: ${issue.sourceType}</td></tr>
-                    ${mediaInfo}
-                    <tr><td style="font-weight: bold; vertical-align: top;">Leading Sector</td><td style="vertical-align: top;">: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
+            <div style="padding: 30px; font-family: 'Inter', sans-serif; color: #333;">
+                <h2 style="color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Laporan Analisis Isu</h2>
+                <table style="width: 100%; margin-bottom: 20px; font-size: 14px;">
+                    <tr><td style="width: 130px; font-weight: bold;">Judul</td><td>: ${issue.title}</td></tr>
+                    <tr><td style="font-weight: bold;">Tanggal</td><td>: ${issue.date}</td></tr>
+                    <tr><td style="font-weight: bold;">Media / Platform</td><td>: ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}</td></tr>
+                    <tr><td style="font-weight: bold;">Akun / Domain</td><td>: ${(issue.domains || []).concat(issue.accounts || []).filter(Boolean).join(', ') || '-'}</td></tr>
+                    <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
+                    <tr><td style="font-weight: bold;">Leading Sector</td><td>: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
                 </table>
-                
-                <div class="pdf-section">
-                    <h3>Analisis</h3>
-                    <p>${issue.aiAnalysis?.analysis}</p>
-                </div>
-                <div class="pdf-section">
-                    <h3>Rekomendasi Kebijakan</h3>
-                    <p>${issue.aiAnalysis?.policyRecommendation}</p>
-                </div>
-                <div class="pdf-section">
-                    <h3>Rekomendasi Publikasi</h3>
-                    <p>${issue.aiAnalysis?.publicationRecommendation}</p>
-                </div>
+                <h3 style="color: #0f172a; margin-top: 20px;">Analisis</h3>
+                <p style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">${issue.aiAnalysis?.analysis}</p>
+                <h3 style="color: #0f172a; margin-top: 20px;">Rekomendasi Kebijakan</h3>
+                <p style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">${issue.aiAnalysis?.policyRecommendation}</p>
+                <h3 style="color: #0f172a; margin-top: 20px;">Rekomendasi Publikasi</h3>
+                <p style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;">${issue.aiAnalysis?.publicationRecommendation}</p>
             </div>
         `;
-        
         window.html2pdf().from(content).set({
-            margin: [15, 15, 15, 15],
+            margin: 10,
             filename: `Analisis_${issue.title.substring(0, 20)}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['css', 'legacy'] }
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         }).save();
       };
 
       const handleDownloadWord = (issue) => {
-          let mediaInfo = '';
-          if (issue.sourceType === 'Media Cetak') {
-              mediaInfo = `
-                  <tr><td style="font-weight: bold;">Jenis Media</td><td>: ${issue.printType || '-'}</td></tr>
-                  <tr><td style="font-weight: bold;">Nama Media</td><td>: ${issue.mediaName || '-'}</td></tr>
-              `;
-          } else if (issue.sourceType === 'Media Online') {
-              mediaInfo = `
-                  <tr><td style="font-weight: bold;">Domain</td><td>: ${(issue.domains || [issue.domain]).filter(Boolean).join(', ') || '-'}</td></tr>
-                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
-              `;
-          } else {
-              mediaInfo = `
-                  <tr><td style="font-weight: bold;">Platform</td><td>: ${(issue.platforms || [issue.platform]).filter(Boolean).join(', ') || '-'}</td></tr>
-                  <tr><td style="font-weight: bold;">Akun Sumber</td><td>: ${(issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-'}</td></tr>
-                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
-              `;
-          }
-
           const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML to Word</title></head><body>";
           const footer = "</body></html>";
           const content = `
@@ -1651,18 +1778,18 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
               <table style="width: 100%; margin-bottom: 20px; font-size: 14px;">
                   <tr><td style="width: 130px; font-weight: bold;">Judul</td><td>: ${issue.title}</td></tr>
                   <tr><td style="font-weight: bold;">Tanggal</td><td>: ${issue.date}</td></tr>
-                  <tr><td style="font-weight: bold;">Kategori Isu</td><td>: ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}</td></tr>
-                  <tr><td style="font-weight: bold;">Media</td><td>: ${issue.sourceType}</td></tr>
-                  ${mediaInfo}
+                  <tr><td style="font-weight: bold;">Media / Platform</td><td>: ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}</td></tr>
+                  <tr><td style="font-weight: bold;">Akun / Domain</td><td>: ${(issue.domains || []).concat(issue.accounts || []).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
                   <tr><td style="font-weight: bold;">Leading Sector</td><td>: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
               </table>
               <br/>
               <h3>Analisis</h3>
-              <p>${(issue.aiAnalysis?.analysis || '').replace(/\n/g, '<br>')}</p>
+              <p>${String(issue.aiAnalysis?.analysis || '').replace(/\n/g, '<br>')}</p>
               <h3>Rekomendasi Kebijakan</h3>
-              <p>${(issue.aiAnalysis?.policyRecommendation || '').replace(/\n/g, '<br>')}</p>
+              <p>${String(issue.aiAnalysis?.policyRecommendation || '').replace(/\n/g, '<br>')}</p>
               <h3>Rekomendasi Publikasi</h3>
-              <p>${(issue.aiAnalysis?.publicationRecommendation || '').replace(/\n/g, '<br>')}</p>
+              <p>${String(issue.aiAnalysis?.publicationRecommendation || '').replace(/\n/g, '<br>')}</p>
           `;
           const html = header + content + footer;
           const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
@@ -1684,41 +1811,22 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
           let content = `<h1 style="text-align: center; color: #1e293b;">Rekapitulasi Laporan Analisis Isu</h1><br/>`;
 
           analyzedIssues.forEach((issue, index) => {
-              let mediaInfo = '';
-              if (issue.sourceType === 'Media Cetak') {
-                  mediaInfo = `
-                      <tr><td style="font-weight: bold;">Jenis Media</td><td>: ${issue.printType || '-'}</td></tr>
-                      <tr><td style="font-weight: bold;">Nama Media</td><td>: ${issue.mediaName || '-'}</td></tr>
-                  `;
-              } else if (issue.sourceType === 'Media Online') {
-                  mediaInfo = `
-                      <tr><td style="font-weight: bold;">Domain</td><td>: ${(issue.domains || [issue.domain]).filter(Boolean).join(', ') || '-'}</td></tr>
-                      <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
-                  `;
-              } else {
-                  mediaInfo = `
-                      <tr><td style="font-weight: bold;">Platform</td><td>: ${(issue.platforms || [issue.platform]).filter(Boolean).join(', ') || '-'}</td></tr>
-                      <tr><td style="font-weight: bold;">Akun Sumber</td><td>: ${(issue.accounts || [issue.account]).filter(Boolean).join(', ') || '-'}</td></tr>
-                      <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
-                  `;
-              }
-
               content += `
               <h2 style="color: #1e293b;">${index + 1}. ${issue.title}</h2>
               <table style="width: 100%; margin-bottom: 20px; font-size: 14px;">
                   <tr><td style="width: 130px; font-weight: bold;">Tanggal</td><td>: ${issue.date}</td></tr>
-                  <tr><td style="font-weight: bold;">Kategori Isu</td><td>: ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}</td></tr>
-                  <tr><td style="font-weight: bold;">Media</td><td>: ${issue.sourceType}</td></tr>
-                  ${mediaInfo}
+                  <tr><td style="font-weight: bold;">Media / Platform</td><td>: ${issue.sourceType} ${issue.platforms?.length ? '- ' + issue.platforms.filter(Boolean).join(', ') : ''}</td></tr>
+                  <tr><td style="font-weight: bold;">Akun / Domain</td><td>: ${(issue.domains || []).concat(issue.accounts || []).filter(Boolean).join(', ') || '-'}</td></tr>
+                  <tr><td style="font-weight: bold;">Tautan / Link</td><td>: ${(issue.links || [issue.link]).filter(Boolean).join(', ') || '-'}</td></tr>
                   <tr><td style="font-weight: bold;">Leading Sector</td><td>: ${(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ') || '-'}</td></tr>
               </table>
               <br/>
               <h3>Analisis</h3>
-              <p>${(issue.aiAnalysis?.analysis || '').replace(/\n/g, '<br>')}</p>
+              <p>${String(issue.aiAnalysis?.analysis || '').replace(/\n/g, '<br>')}</p>
               <h3>Rekomendasi Kebijakan</h3>
-              <p>${(issue.aiAnalysis?.policyRecommendation || '').replace(/\n/g, '<br>')}</p>
+              <p>${String(issue.aiAnalysis?.policyRecommendation || '').replace(/\n/g, '<br>')}</p>
               <h3 style="font-family: sans-serif;">Rekomendasi Publikasi</h3>
-              <p style="font-family: sans-serif;">${(issue.aiAnalysis?.publicationRecommendation || '').replace(/\n/g, '<br>')}</p>
+              <p style="font-family: sans-serif;">${String(issue.aiAnalysis?.publicationRecommendation || '').replace(/\n/g, '<br>')}</p>
               <hr style="margin: 40px 0; border: 1px solid #cbd5e1;" />
               `;
           });
@@ -1827,27 +1935,12 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
         let text = `Yth. Bapak Wali Kota Bandung\ndi tempat.\n\nMohon izin menyampaikan terkait isu yang berkembang berkaitan dengan Pemerintah Kota Bandung, pada hari ${dateStr}.\n\n`;
         
         text += `*Ringkasan Isu:*\n${issue.title}\n`;
-        text += `*Kategori Isu:* ${(issue.issueCategories || [issue.issueCategory || '-']).join(', ')}\n`;
         
-        if (issue.sourceType === 'Media Cetak') {
-            text += `*Media:* Media Cetak - ${issue.mediaName || '-'}\n`;
-        } else if (issue.sourceType === 'Media Online') {
-            const domains = (issue.domains || [issue.domain]).filter(Boolean);
-            text += `*Media/Domain:* Media Online ${domains.length ? '- ' + domains.join(', ') : ''}\n`;
-        } else {
-            const platforms = (issue.platforms || [issue.platform]).filter(Boolean);
-            const accounts = (issue.accounts || [issue.account]).filter(Boolean);
-            text += `*Media/Platform:* ${issue.sourceType} ${platforms.length ? '- ' + platforms.join(', ') : ''}\n`;
-            if (accounts.length > 0) {
-                text += `*Akun Sumber:* ${accounts.join(', ')}\n`;
-            }
-        }
-
         const links = (issue.links || [issue.link]).filter(Boolean);
         if (links.length > 0) {
-          text += `\n*Sumber Berita / Referensi:*\n${links.map((l, i) => `${i+1}. ${l}`).join('\n')}\n\n`;
+          text += `\n*Sumber Berita / Referensi:*\n${links.map((l, i) => `${i+1}. ${issue.sourceType}: ${l}`).join('\n')}\n\n`;
         } else {
-          text += `\n`;
+          text += `\n*Sumber Berita / Referensi:*\n1. ${issue.sourceType} ${issue.platforms?.length ? '(' + issue.platforms.filter(Boolean).join(', ') + ')' : ''}\n\n`;
         }
         
         if (issue.aiAnalysis) {
@@ -1856,278 +1949,280 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
           text += `*3. Rekomendasi Publikasi:*\n${issue.aiAnalysis.publicationRecommendation}\n\n`;
         }
         
-        text += `Demikian analisis isu yang dapat Kami sampaikan. Terimakasih.\n\nTembusan:\nYth. Bapak Sekretaris Daerah Kota Bandung`;
+        text += `Demikian analisis isu yang dapat Kami sampaikan. Terimakasih.\n\nTembusan:\nYth. Bapak Wakil Wali Kota Bandung\nYth. Bapak Sekretaris Daerah Kota Bandung`;
         
         const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
       };
 
-      if (!isFirebaseConfigured) return <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4"><div className="bg-white p-8 rounded-2xl shadow-lg"><h2 className="font-bold text-xl">Konfigurasi Firebase Diperlukan</h2></div></div>;
-      if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="w-10 h-10 animate-spin text-blue-600"/></div>;
-      if (!user) return <AuthScreen onLogin={setUser} setGlobalRole={setUserRole} setGlobalProfile={setUserProfile} showToast={showToast} />;
+  if (!isFirebaseConfigured) return <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4"><div className="bg-white p-8 rounded-2xl shadow-lg"><h2 className="font-bold text-xl">Konfigurasi Firebase Diperlukan</h2></div></div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="w-10 h-10 animate-spin text-blue-600"/></div>;
+  if (!user) return <AuthScreen onLogin={setUser} setGlobalRole={setUserRole} setGlobalProfile={setUserProfile} showToast={showToast} />;
 
-      const navItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'social', label: 'Media Sosial', icon: Share2 },
-        { id: 'online', label: 'Media Online', icon: Globe },
-        { id: 'print', label: 'Media Cetak', icon: Newspaper },
-        { id: 'analysis', label: 'Analisis Isu', icon: Brain },
-      ];
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'social', label: 'Media Sosial', icon: Share2 },
+    { id: 'online', label: 'Media Online', icon: Globe },
+    { id: 'print', label: 'Media Cetak', icon: Newspaper },
+    { id: 'analysis', label: 'Analisis Isu', icon: Brain },
+  ];
 
-      return (
-        <div className="min-h-screen bg-slate-50 flex overflow-hidden font-sans">
-          {toast.show && (<div className={`fixed top-4 right-4 z-[9999] px-5 py-2.5 text-sm rounded-xl shadow-2xl flex items-center animate-bounce ${toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'} text-white`}><span className="font-medium">{toast.message}</span></div>)}
-          
-          <aside className={`bg-slate-900 text-slate-300 w-56 flex-shrink-0 flex flex-col transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full fixed h-full z-40'}`}>
-            <div className="p-5 bg-slate-950 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Activity className="text-blue-500" size={20}/>
-                <div className="flex flex-col">
-                  <span className="text-white font-bold text-sm">Media Monitoring</span>
-                  <span className="text-slate-400 text-[9px] leading-tight mt-0.5">Pemerintah Kota Bandung</span>
+  return (
+    <div className="min-h-screen bg-slate-50 flex overflow-hidden font-sans">
+      {toast.show && (<div className={`fixed top-4 right-4 z-[9999] px-5 py-2.5 text-sm rounded-xl shadow-2xl flex items-center animate-bounce ${toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'} text-white`}><span className="font-medium">{toast.message}</span></div>)}
+      
+      <aside className={`bg-slate-900 text-slate-300 w-56 flex-shrink-0 flex flex-col transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full fixed h-full z-40'}`}>
+        <div className="p-5 bg-slate-950 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Activity className="text-blue-500" size={20}/>
+            <div className="flex flex-col">
+              <span className="text-white font-bold text-sm">Media Monitoring</span>
+              <span className="text-slate-400 text-[9px] leading-tight mt-0.5">Pemerintah Kota Bandung</span>
+            </div>
+          </div>
+        </div>
+        <nav className="flex-1 py-4 px-3 space-y-1">
+          {navItems.map(item => (<button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${activeTab === item.id ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800'}`}><item.icon size={18} /><span className="font-bold text-xs">{item.label}</span></button>))}
+        </nav>
+        <div className="p-4"><button onClick={handleLogout} className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 transition-colors text-red-400 rounded-lg flex justify-center text-xs font-bold"><LogOut size={16} className="mr-2"/> Logout</button></div>
+      </aside>
+
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <header className="bg-white px-5 py-3 border-b flex justify-between items-center">
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-slate-100 bg-slate-50 border rounded-lg"><Menu size={18}/></button>
+          <div className="flex items-center gap-4">
+            <span className="hidden sm:inline-block font-bold text-[11px] bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full shadow-sm">{userProfile?.name} ({userRole === 'admin' ? 'Admin' : (userRole === 'pimpinan' ? 'Pimpinan' : userProfile?.agency)})</span>
+            
+            {/* Panel Notifikasi In-App */}
+            <div className="relative">
+              <button onClick={() => setShowNotifPanel(!showNotifPanel)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 relative transition-colors">
+                <Bell size={18}/>
+                {notifications.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>}
+              </button>
+              
+              {showNotifPanel && (
+                <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 shadow-2xl rounded-2xl z-50 overflow-hidden">
+                   <div className="p-4 bg-slate-50 border-b flex justify-between items-center">
+                     <span className="font-bold text-slate-800 text-sm">Notifikasi Isu Baru</span>
+                     <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{notifications.length} Baru</span>
+                   </div>
+                   <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                     {notifications.length > 0 ? notifications.map(n => (
+                       <div key={n.id} onClick={() => { setViewingIssue(n); setShowNotifPanel(false); }} className="p-4 border-b hover:bg-slate-50 cursor-pointer transition-colors">
+                         <p className="text-[10px] font-bold text-blue-600 mb-1 line-clamp-1">{(n.leadingSectors || [n.leadingSector]).filter(Boolean).join(', ')}</p>
+                         <p className="text-xs font-semibold text-slate-800 line-clamp-2">{n.title}</p>
+                         <div className="flex justify-between items-center mt-2">
+                           <span className="text-[9px] text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">{n.sourceType}</span>
+                           <span className="text-[9px] text-slate-400">{n.date}</span>
+                         </div>
+                       </div>
+                     )) : <p className="p-6 text-xs text-center text-slate-500">Belum ada isu baru untuk OPD Anda.</p>}
+                   </div>
                 </div>
+              )}
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 overflow-y-auto p-5 scroll-smooth"><div className="max-w-7xl mx-auto">
+          {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} potensiIsuList={potensiIsuList} role={userRole} onSavePotensiIsu={savePotensiIsu} showToast={showToast} />}
+          {activeTab === 'social' && <DataTableView title="Media Sosial" type="Media Sosial" issues={issues.filter(i=>i.sourceType==='Media Sosial')} onAdd={()=>setIsIssueModalOpen('Media Sosial')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Sosial');}} onDelete={triggerDeleteIssue} role={userRole} onView={setViewingIssue} />}
+          {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={triggerDeleteIssue} role={userRole} onView={setViewingIssue} onFetchNews={handleFetchNews} isFetchingNews={isFetchingNews} />}
+          {activeTab === 'print' && <DataTableView title="Media Cetak" type="Media Cetak" issues={issues.filter(i=>i.sourceType==='Media Cetak')} onAdd={()=>setIsIssueModalOpen('Media Cetak')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Cetak');}} onDelete={triggerDeleteIssue} role={userRole} onView={setViewingIssue} />}
+          {activeTab === 'analysis' && <AnalysisView issues={issues} role={userRole} agency={userProfile?.agency} onAnalyze={handleAnalyzeAI} analyzingId={analyzingId} onView={setViewingIssue} onPublishToggle={togglePublishAnalysis} onEditAnalysis={setEditingAnalysisIssue} onDelete={triggerDeleteIssue} onDownloadAll={handleDownloadAllWord} onDownloadRecap={handleDownloadRecapWord} />}
+        </div></div>
+        
+        {isIssueModalOpen && <IssueModal type={isIssueModalOpen} onClose={() => {setIsIssueModalOpen(false); setEditingIssue(null);}} onSave={saveIssue} initialData={editingIssue} isUploading={isUploading} showToast={showToast}/>}
+        {handlingIssue && <HandlingModal issue={handlingIssue} onClose={() => {setHandlingIssue(null); setViewingIssue(handlingIssue);}} onSave={saveHandlingUpdate} isUploading={isUploading} role={userRole} userAgency={userProfile?.agency} showToast={showToast}/>}
+        {editingAnalysisIssue && <AnalysisEditModal issue={editingAnalysisIssue} onClose={() => setEditingAnalysisIssue(null)} onSave={saveAnalysisEdit} isUploading={isUploading}/>}
+
+        {viewingIssue && (
+          <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+             <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl p-6 overflow-y-auto max-h-[90vh] relative">
+                <button onClick={()=>setViewingIssue(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X size={20}/></button>
+                <h2 className="text-2xl font-bold mb-6 pr-10 text-slate-800">{viewingIssue.title}</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                   
+                   {/* KOLOM KIRI: Informasi & Konten */}
+                   <div className="space-y-4">
+                      <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm">
+                        <h4 className="font-bold text-blue-800 mb-4 flex items-center text-sm"><Share2 size={16} className="mr-2"/> Informasi Sumber & Sektor</h4>
+                        <div className="space-y-3 text-sm text-slate-700">
+                           <p><strong>Media:</strong> {viewingIssue.sourceType} {viewingIssue.mediaName ? `(${viewingIssue.mediaName})` : ''}</p>
+                           {viewingIssue.platforms && viewingIssue.platforms.filter(Boolean).length > 0 && (
+                              <p><strong>Platform:</strong> {viewingIssue.platforms.filter(Boolean).join(', ')}</p>
+                           )}
+                           {!viewingIssue.platforms && viewingIssue.platform && (
+                              <p><strong>Platform:</strong> {viewingIssue.platform}</p>
+                           )}
+                           {viewingIssue.domains && viewingIssue.domains.filter(Boolean).length > 0 && (
+                              <p><strong>Domain:</strong> {viewingIssue.domains.filter(Boolean).join(', ')}</p>
+                           )}
+                           {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).length > 0 && (
+                              <div>
+                                  <strong>Tautan/Link:</strong>
+                                  <ul className="list-disc pl-5 mt-1 text-xs space-y-1">
+                                      {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).map((l, i) => (
+                                          <li key={i}><a href={l} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">{l}</a></li>
+                                      ))}
+                                  </ul>
+                              </div>
+                           )}
+                           <div>
+                               <strong>Leading Sector:</strong>
+                               <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                  {(viewingIssue.leadingSectors || [viewingIssue.leadingSector]).filter(Boolean).map((s, i) => (
+                                      <span key={i} className="text-xs bg-white border border-blue-200 text-blue-700 px-2 py-1 rounded font-bold shadow-sm">{s}</span>
+                                  ))}
+                               </div>
+                           </div>
+                           {viewingIssue.attachmentUrl && (
+                              <div className="mt-2 pt-3 border-t border-blue-200">
+                                  <a href={viewingIssue.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm"><ImageIcon size={14} className="mr-1.5"/> Lihat Lampiran Isu</a>
+                              </div>
+                           )}
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
+                        <p className="text-sm font-bold text-slate-500 mb-2">Isi/Konten</p>
+                        <p className="text-sm text-slate-800 whitespace-pre-wrap">{viewingIssue.content || viewingIssue.caption || '-'}</p>
+                      </div>
+                      
+                      {/* Daftar Komentar Netizen untuk Medsos */}
+                      {viewingIssue.sourceType === 'Media Sosial' && viewingIssue.comments && viewingIssue.comments.length > 0 && (
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                          <p className="text-sm font-bold text-slate-500 mb-3">Komentar Netizen</p>
+                          <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                            {viewingIssue.comments.map((c, i) => (
+                              <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
+                                <div className="flex justify-between items-center mb-1.5">
+                                  <span className="text-xs font-bold text-blue-600">@{c.account || 'anonim'}</span>
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${c.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : c.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{c.sentiment}</span>
+                                </div>
+                                <p className="text-sm text-slate-700">{c.content}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
+                        <div className="flex justify-between items-center mb-4">
+                           <p className="font-bold text-slate-800 text-sm">Riwayat Penanganan</p>
+                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${viewingIssue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : viewingIssue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{viewingIssue.status || 'Belum Ditangani'}</span>
+                        </div>
+                        
+                        <div className="space-y-4 max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                           {viewingIssue.handlingList && viewingIssue.handlingList.length > 0 ? (
+                              viewingIssue.handlingList.map((h, i) => (
+                                 <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm relative group">
+                                    {userRole === 'admin' && (
+                                        <button 
+                                            onClick={() => handleDeleteHandlingRecord(viewingIssue.id, i)}
+                                            className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                            title="Hapus Progress Ini"
+                                        >
+                                            <Trash2 size={14}/>
+                                        </button>
+                                    )}
+                                    <div className="flex justify-between items-start mb-1 pr-8">
+                                       <span className="text-[11px] font-bold text-blue-600">{h.agency}</span>
+                                       <span className="text-[10px] text-slate-400">{h.handlingDate}</span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mb-2">Status: <strong className="text-slate-700">{h.status}</strong> (by: {h.updatedBy})</p>
+                                    <p className="text-xs text-slate-700 whitespace-pre-wrap">{h.handlingNotes}</p>
+                                    {h.handlingAttachmentUrl && (
+                                      <a href={h.handlingAttachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-2 bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[10px] font-bold hover:bg-emerald-100"><ImageIcon size={12} className="mr-1"/> Lihat Bukti</a>
+                                    )}
+                                 </div>
+                              ))
+                           ) : (
+                              // Tampilan Lama / Jika belum pakai sistem Array
+                              viewingIssue.handlingNotes ? (
+                                <div className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm relative group">
+                                    <div className="flex justify-between items-start mb-1 pr-8">
+                                       <span className="text-[11px] font-bold text-blue-600">Catatan Penanganan (Lama)</span>
+                                       <span className="text-[10px] text-slate-400">{viewingIssue.handlingDate}</span>
+                                    </div>
+                                    <p className="text-xs text-slate-700 whitespace-pre-wrap">{viewingIssue.handlingNotes}</p>
+                                    {viewingIssue.handlingAttachmentUrl && (
+                                      <a href={viewingIssue.handlingAttachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-2 bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[10px] font-bold hover:bg-emerald-100"><ImageIcon size={12} className="mr-1"/> Lihat Bukti</a>
+                                    )}
+                                </div>
+                              ) : (
+                                 <p className="text-xs text-slate-400 text-center py-2">Belum ada riwayat progres penanganan instansi.</p>
+                              )
+                           )}
+                        </div>
+
+                        {(userRole === 'admin' || (viewingIssue.leadingSectors || []).includes(userProfile?.agency)) && (
+                          <button onClick={() => {setHandlingIssue(viewingIssue); setViewingIssue(null);}} className="w-full mt-4 bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm flex items-center justify-center shadow-md hover:bg-emerald-700 transition-colors"><Plus size={16} className="mr-2"/> Tambah Progress Penanganan</button>
+                        )}
+                      </div>
+                   </div>
+                   
+                   {/* KOLOM KANAN: Analisis AI */}
+                   <div>
+                     {viewingIssue.aiAnalysis && (userRole === 'admin' || userRole === 'pimpinan' || (viewingIssue.leadingSectors || [viewingIssue.leadingSector]).includes(userProfile?.agency)) ? (
+                        <div className="bg-amber-50 p-6 rounded-xl border border-amber-200 h-full flex flex-col shadow-sm">
+                          <div className="flex flex-wrap justify-between items-start mb-5 border-b border-amber-200 pb-4 gap-2">
+                             <h4 className="font-bold text-amber-900 flex items-center text-lg"><Brain className="mr-2 text-amber-600"/> Hasil Analisis & Rekomendasi</h4>
+                             <div className="flex gap-2">
+                                 <button onClick={() => handleDownloadWord(viewingIssue)} className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">DOCX</button>
+                                 <button onClick={() => handleDownloadPDF(viewingIssue)} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">PDF</button>
+                                 <button onClick={() => handleSendWA(viewingIssue)} className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded font-bold transition-colors shadow-sm flex items-center" title="Kirim Laporan via WhatsApp"><MessageCircle size={14}/></button>
+                             </div>
+                          </div>
+                          
+                          <div className="flex-1 overflow-y-auto pr-2 space-y-5">
+                            <div>
+                               <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Analisis:</p>
+                               <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.analysis || "Belum ada teks analisis."}</p>
+                            </div>
+                            <div>
+                               <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Rekomendasi Kebijakan:</p>
+                               <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.policyRecommendation || "-"}</p>
+                            </div>
+                            <div>
+                               <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Rekomendasi Publikasi:</p>
+                               <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.publicationRecommendation || "-"}</p>
+                            </div>
+                          </div>
+                        </div>
+                     ) : (
+                       <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-slate-500 h-full flex flex-col items-center justify-center">
+                         <Lock size={32} className="mb-3 text-slate-300"/>
+                         {userRole === 'admin' ? "Pilih tombol analisis untuk memproses isu ini." : "Isu ini belum dianalisis atau bukan kewenangan Anda."}
+                       </div>
+                     )}
+                   </div>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {confirmDialog && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden p-6 text-center">
+              <AlertTriangle size={48} className="mx-auto text-amber-500 mb-4" />
+              <h3 className="text-lg font-bold text-slate-800 mb-2">{confirmDialog.title}</h3>
+              <p className="text-sm text-slate-600 mb-6">{confirmDialog.message}</p>
+              <div className="flex justify-center gap-3">
+                <button onClick={() => setConfirmDialog(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">Batal</button>
+                <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-colors">Ya, Hapus</button>
               </div>
             </div>
-            <nav className="flex-1 py-4 px-3 space-y-1">
-              {navItems.map(item => (<button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${activeTab === item.id ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800'}`}><item.icon size={18} /><span className="font-bold text-xs">{item.label}</span></button>))}
-            </nav>
-            <div className="p-4"><button onClick={handleLogout} className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 transition-colors text-red-400 rounded-lg flex justify-center text-xs font-bold"><LogOut size={16} className="mr-2"/> Logout</button></div>
-          </aside>
+          </div>
+        )}
 
-          <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-            <header className="bg-white px-5 py-3 border-b flex justify-between items-center">
-              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-slate-100 bg-slate-50 border rounded-lg"><Menu size={18}/></button>
-              <div className="flex items-center gap-4">
-                <span className="hidden sm:inline-block font-bold text-[11px] bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full shadow-sm">{userProfile?.name} ({userRole === 'admin' ? 'Admin' : (userRole === 'pimpinan' ? 'Pimpinan' : userProfile?.agency)})</span>
-                
-                {/* Panel Notifikasi In-App */}
-                <div className="relative">
-                  <button onClick={() => setShowNotifPanel(!showNotifPanel)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 relative transition-colors">
-                    <Bell size={18}/>
-                    {notifications.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>}
-                  </button>
-                  
-                  {showNotifPanel && (
-                    <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 shadow-2xl rounded-2xl z-50 overflow-hidden">
-                       <div className="p-4 bg-slate-50 border-b flex justify-between items-center">
-                         <span className="font-bold text-slate-800 text-sm">Notifikasi Isu Baru</span>
-                         <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{notifications.length} Baru</span>
-                       </div>
-                       <div className="max-h-72 overflow-y-auto custom-scrollbar">
-                         {notifications.length > 0 ? notifications.map(n => (
-                           <div key={n.id} onClick={() => { setViewingIssue(n); setShowNotifPanel(false); }} className="p-4 border-b hover:bg-slate-50 cursor-pointer transition-colors">
-                             <p className="text-[10px] font-bold text-blue-600 mb-1 line-clamp-1">{(n.leadingSectors || [n.leadingSector]).filter(Boolean).join(', ')}</p>
-                             <p className="text-xs font-semibold text-slate-800 line-clamp-2">{n.title}</p>
-                             <div className="flex justify-between items-center mt-2">
-                               <span className="text-[9px] text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">{n.sourceType}</span>
-                               <span className="text-[9px] text-slate-400">{n.date}</span>
-                             </div>
-                           </div>
-                         )) : <p className="p-6 text-xs text-center text-slate-500">Belum ada isu baru untuk OPD Anda.</p>}
-                       </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </header>
-            <div className="flex-1 overflow-y-auto p-5 scroll-smooth"><div className="max-w-7xl mx-auto">
-              {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} potensiIsuList={potensiIsuList} role={userRole} onSavePotensiIsu={savePotensiIsu} showToast={showToast} />}
-              {activeTab === 'social' && <DataTableView title="Media Sosial" type="Media Sosial" issues={issues.filter(i=>i.sourceType==='Media Sosial')} onAdd={()=>setIsIssueModalOpen('Media Sosial')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Sosial');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
-              {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
-              {activeTab === 'print' && <DataTableView title="Media Cetak" type="Media Cetak" issues={issues.filter(i=>i.sourceType==='Media Cetak')} onAdd={()=>setIsIssueModalOpen('Media Cetak')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Cetak');}} onDelete={deleteIssue} role={userRole} onView={setViewingIssue} />}
-              {activeTab === 'analysis' && <AnalysisView issues={issues} role={userRole} agency={userProfile?.agency} onAnalyze={handleAnalyzeAI} analyzingId={analyzingId} onView={setViewingIssue} onPublishToggle={togglePublishAnalysis} onEditAnalysis={setEditingAnalysisIssue} onDelete={deleteIssue} onDownloadAll={handleDownloadAllWord} onDownloadRecap={handleDownloadRecapWord} />}
-            </div></div>
-            
-            {isIssueModalOpen && <IssueModal type={isIssueModalOpen} onClose={() => {setIsIssueModalOpen(false); setEditingIssue(null);}} onSave={saveIssue} initialData={editingIssue} isUploading={isUploading} role={userRole} userAgency={userProfile?.agency}/>}
-            {handlingIssue && <HandlingModal issue={handlingIssue} onClose={() => {setHandlingIssue(null); setViewingIssue(handlingIssue);}} onSave={saveHandlingUpdate} isUploading={isUploading} role={userRole} userAgency={userProfile?.agency}/>}
-            {editingAnalysisIssue && <AnalysisEditModal issue={editingAnalysisIssue} onClose={() => setEditingAnalysisIssue(null)} onSave={saveAnalysisEdit} isUploading={isUploading}/>}
+      </main>
+    </div>
+  );
+}
 
-            {viewingIssue && (
-              <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-                 <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl p-6 overflow-y-auto max-h-[90vh] relative">
-                    <button onClick={()=>setViewingIssue(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X size={20}/></button>
-                    <h2 className="text-2xl font-bold mb-6 pr-10 text-slate-800">{viewingIssue.title}</h2>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                       
-                       {/* KOLOM KIRI: Informasi & Konten */}
-                       <div className="space-y-4">
-                          <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm">
-                            <h4 className="font-bold text-blue-800 mb-4 flex items-center text-sm"><Share2 size={16} className="mr-2"/> Informasi Sumber & Sektor</h4>
-                            <div className="space-y-3 text-sm text-slate-700">
-                               <p><strong>Media:</strong> {viewingIssue.sourceType}</p>
-                               <p><strong>Kategori Isu:</strong> {(viewingIssue.issueCategories || [viewingIssue.issueCategory || '-']).join(', ')}</p>
-                               
-                               {viewingIssue.sourceType === 'Media Cetak' && (
-                                  <>
-                                    <p><strong>Jenis Media:</strong> {viewingIssue.printType}</p>
-                                    <p><strong>Nama Media:</strong> {viewingIssue.mediaName}</p>
-                                  </>
-                               )}
-                               {viewingIssue.sourceType === 'Media Online' && (
-                                  <>
-                                    {viewingIssue.domains && viewingIssue.domains.filter(Boolean).length > 0 && (
-                                        <p><strong>Domain:</strong> {viewingIssue.domains.filter(Boolean).join(', ')}</p>
-                                    )}
-                                  </>
-                               )}
-                               {viewingIssue.sourceType === 'Media Sosial' && (
-                                  <>
-                                     {viewingIssue.platforms && viewingIssue.platforms.filter(Boolean).length > 0 ? (
-                                        <p><strong>Platform:</strong> {viewingIssue.platforms.filter(Boolean).join(', ')}</p>
-                                     ) : viewingIssue.platform && (
-                                        <p><strong>Platform:</strong> {viewingIssue.platform}</p>
-                                     )}
-                                     
-                                     {viewingIssue.accounts && viewingIssue.accounts.filter(Boolean).length > 0 ? (
-                                        <p><strong>Akun Sumber:</strong> {viewingIssue.accounts.filter(Boolean).join(', ')}</p>
-                                     ) : viewingIssue.account && (
-                                        <p><strong>Akun Sumber:</strong> {viewingIssue.account}</p>
-                                     )}
-                                  </>
-                               )}
-                               
-                               {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).length > 0 && (
-                                  <div>
-                                      <strong>Tautan/Link:</strong>
-                                      <ul className="list-disc pl-5 mt-1 text-xs space-y-1">
-                                          {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).map((l, i) => (
-                                              <li key={i}><a href={l} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">{l}</a></li>
-                                          ))}
-                                      </ul>
-                                  </div>
-                               )}
-                               <div>
-                                   <strong>Leading Sector:</strong>
-                                   <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                      {(viewingIssue.leadingSectors || [viewingIssue.leadingSector]).filter(Boolean).map((s, i) => (
-                                          <span key={i} className="text-xs bg-white border border-blue-200 text-blue-700 px-2 py-1 rounded font-bold shadow-sm">{s}</span>
-                                      ))}
-                                   </div>
-                               </div>
-                               {viewingIssue.attachmentUrl && (
-                                  <div className="mt-2 pt-3 border-t border-blue-200">
-                                      <a href={viewingIssue.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm"><ImageIcon size={14} className="mr-1.5"/> Lihat Lampiran Isu</a>
-                                  </div>
-                               )}
-                            </div>
-                          </div>
-
-                          <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                            <p className="text-sm font-bold text-slate-500 mb-2">Isi/Konten</p>
-                            <p className="text-sm text-slate-800 whitespace-pre-wrap">{viewingIssue.content || viewingIssue.caption || '-'}</p>
-                          </div>
-                          
-                          {/* Daftar Komentar Netizen untuk Medsos */}
-                          {viewingIssue.sourceType === 'Media Sosial' && viewingIssue.comments && viewingIssue.comments.length > 0 && (
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                              <p className="text-sm font-bold text-slate-500 mb-3">Komentar Netizen</p>
-                              <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                                {viewingIssue.comments.map((c, i) => (
-                                  <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
-                                    <div className="flex justify-between items-center mb-1.5">
-                                      <span className="text-xs font-bold text-blue-600">@{c.account || 'anonim'}</span>
-                                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${c.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : c.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{c.sentiment}</span>
-                                    </div>
-                                    <p className="text-sm text-slate-700">{c.content}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                            <div className="flex justify-between items-center mb-4">
-                               <p className="font-bold text-slate-800 text-sm">Riwayat Penanganan</p>
-                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${viewingIssue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : viewingIssue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{viewingIssue.status || 'Belum Ditangani'}</span>
-                            </div>
-                            
-                            <div className="space-y-4 max-h-60 overflow-y-auto custom-scrollbar pr-2">
-                               {viewingIssue.handlingList && viewingIssue.handlingList.length > 0 ? (
-                                  viewingIssue.handlingList.map((h, i) => (
-                                     <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
-                                        <div className="flex justify-between items-start mb-1">
-                                           <span className="text-[11px] font-bold text-blue-600">{h.agency}</span>
-                                           <span className="text-[10px] text-slate-400">{h.handlingDate}</span>
-                                        </div>
-                                        <p className="text-[10px] text-slate-500 mb-2">Status: <strong className="text-slate-700">{h.status}</strong> (by: {h.updatedBy})</p>
-                                        <p className="text-xs text-slate-700 whitespace-pre-wrap">{h.handlingNotes}</p>
-                                        {h.handlingAttachmentUrl && (
-                                          <a href={h.handlingAttachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-2 bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[10px] font-bold hover:bg-emerald-100"><ImageIcon size={12} className="mr-1"/> Lihat Bukti</a>
-                                        )}
-                                     </div>
-                                  ))
-                               ) : (
-                                  // Tampilan Lama / Jika belum pakai sistem Array
-                                  viewingIssue.handlingNotes ? (
-                                    <div className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
-                                        <div className="flex justify-between items-start mb-1">
-                                           <span className="text-[11px] font-bold text-blue-600">Catatan Penanganan (Lama)</span>
-                                           <span className="text-[10px] text-slate-400">{viewingIssue.handlingDate}</span>
-                                        </div>
-                                        <p className="text-xs text-slate-700 whitespace-pre-wrap">{viewingIssue.handlingNotes}</p>
-                                        {viewingIssue.handlingAttachmentUrl && (
-                                          <a href={viewingIssue.handlingAttachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-2 bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[10px] font-bold hover:bg-emerald-100"><ImageIcon size={12} className="mr-1"/> Lihat Bukti</a>
-                                        )}
-                                    </div>
-                                  ) : (
-                                     <p className="text-xs text-slate-400 text-center py-2">Belum ada riwayat progres penanganan instansi.</p>
-                                  )
-                               )}
-                            </div>
-
-                            {(userRole === 'admin' || (viewingIssue.leadingSectors || []).includes(userProfile?.agency)) && (
-                              <button onClick={() => {setHandlingIssue(viewingIssue); setViewingIssue(null);}} className="w-full mt-4 bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm flex items-center justify-center shadow-md hover:bg-emerald-700 transition-colors"><Plus size={16} className="mr-2"/> Tambah Progress Penanganan</button>
-                            )}
-                          </div>
-                       </div>
-                       
-                       {/* KOLOM KANAN: Analisis AI */}
-                       <div>
-                         {viewingIssue.aiAnalysis && (userRole === 'admin' || userRole === 'pimpinan' || (viewingIssue.leadingSectors || [viewingIssue.leadingSector]).includes(userProfile?.agency)) ? (
-                            <div className="bg-amber-50 p-6 rounded-xl border border-amber-200 h-full flex flex-col shadow-sm">
-                              <div className="flex flex-wrap justify-between items-start mb-5 border-b border-amber-200 pb-4 gap-2">
-                                 <h4 className="font-bold text-amber-900 flex items-center text-lg"><Brain className="mr-2 text-amber-600"/> Hasil Analisis & Rekomendasi</h4>
-                                 <div className="flex gap-2">
-                                     <button onClick={() => handleDownloadWord(viewingIssue)} className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">DOCX</button>
-                                     <button onClick={() => handleDownloadPDF(viewingIssue)} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">PDF</button>
-                                     <button onClick={() => handleSendWA(viewingIssue)} className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded font-bold transition-colors shadow-sm flex items-center" title="Kirim Laporan via WhatsApp"><MessageCircle size={14}/></button>
-                                 </div>
-                              </div>
-                              
-                              <div className="flex-1 overflow-y-auto pr-2 space-y-5">
-                                <div>
-                                   <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Analisis:</p>
-                                   <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.analysis}</p>
-                                </div>
-                                <div>
-                                   <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Rekomendasi Kebijakan:</p>
-                                   <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.policyRecommendation}</p>
-                                </div>
-                                <div>
-                                   <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Rekomendasi Publikasi:</p>
-                                   <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.publicationRecommendation}</p>
-                                </div>
-                              </div>
-                            </div>
-                         ) : (
-                           <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-slate-500 h-full flex flex-col items-center justify-center">
-                             <Lock size={32} className="mb-3 text-slate-300"/>
-                             {userRole === 'admin' ? "Pilih tombol analisis untuk memproses isu ini." : "Isu ini belum dianalisis atau bukan kewenangan Anda."}
-                           </div>
-                         )}
-                       </div>
-                    </div>
-                 </div>
-              </div>
-            )}
-          </main>
-        </div>
-      );
-    }
-
-    const rootElement = document.getElementById('root');
-    const root = createRoot(rootElement);
-    root.render(<App />);
+const rootElement = document.getElementById('root');
+const root = createRoot(rootElement);
+root.render(<App />);
   </script>
 </body>
 </html>
