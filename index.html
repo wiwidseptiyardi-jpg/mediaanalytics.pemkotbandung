@@ -26,6 +26,15 @@
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 
+  <!-- Import Map untuk mengatasi error react/jsx-runtime -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime"
+      }
+    }
+  </script>
+
   <!-- Babel Standalone untuk menjalankan React (JSX) di Browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
@@ -1554,76 +1563,6 @@
         if (userRole !== 'admin') return;
         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', id), { analysisPublished: !currentStatus });
         showToast(!currentStatus ? "Dipublish" : "Ditarik (Unpublish)", "success");
-      };
-
-      const handleFetchNews = async () => {
-        if (userRole !== 'admin') return;
-        if (GNEWS_API_KEY.includes("MASUKKAN")) return showToast("API Key belum diset", "error");
-        
-        setIsFetchingNews(true); 
-        showToast("Mencari berita...", "info");
-        
-        try {
-          const q = encodeURIComponent('Pemkot Bandung');
-          let data;
-          
-          try {
-            const res = await fetch(`https://gnews.io/api/v4/search?q=${q}&lang=id&country=id&max=10&apikey=${GNEWS_API_KEY}`);
-            if (!res.ok) {
-              const errData = await res.json().catch(()=>({}));
-              throw new Error(errData.errors ? errData.errors[0] : "Akses ke GNews ditolak atau limit habis.");
-            }
-            data = await res.json();
-          } catch (fetchError) {
-            if (fetchError.message === 'Failed to fetch') {
-              console.warn("CORS Blocked by browser preview. Injecting mock data.");
-              showToast("Akses API diblokir preview browser. Menggunakan data simulasi...", "info");
-              
-              await new Promise(resolve => setTimeout(resolve, 1500)); 
-              
-              data = {
-                articles: [
-                  {
-                    title: "Pemkot Bandung Percepat Penanganan Banjir di Gedebage",
-                    publishedAt: new Date().toISOString(),
-                    source: { name: "Bandung News" },
-                    url: "https://bandung.go.id",
-                    description: "Pemerintah Kota Bandung di bawah arahan Muhammad Farhan menginstruksikan Dinas PU untuk mempercepat proyek infrastruktur pengendali banjir..."
-                  },
-                  {
-                    title: "Disdik Kota Bandung Luncurkan Program Sekolah Inklusif Unggulan",
-                    publishedAt: new Date().toISOString(),
-                    source: { name: "Pikiran Rakyat" },
-                    url: "https://pikiran-rakyat.com",
-                    description: "Dinas Pendidikan Kota Bandung meresmikan program baru guna memastikan pemerataan pendidikan yang ramah anak."
-                  }
-                ]
-              };
-            } else {
-              throw fetchError;
-            }
-          }
-          
-          if (!data || !data.articles) throw new Error("Format data berita tidak valid");
-          
-          let added = 0;
-          for (const article of data.articles) {
-            if (!issues.some(i => i.title.toLowerCase() === article.title.toLowerCase())) {
-              await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), {
-                sourceType: 'Media Online', title: article.title, date: article.publishedAt.split('T')[0], domain: article.source.name,
-                link: article.url, content: article.description, sentiment: 'Netral', leadingSector: 'Lainnya', status: 'Belum Ditangani', createdAt: new Date().toISOString()
-              });
-              added++;
-            }
-          }
-          showToast(added > 0 ? `Berhasil menarik ${added} berita` : "Semua berita sudah ada", added > 0 ? "success" : "info");
-          
-        } catch (e) { 
-          console.error("Detail Error GNews:", e);
-          showToast(`${e.message}`, "error"); 
-        } finally { 
-          setIsFetchingNews(false); 
-        }
       };
 
       const handleAnalyzeAI = async (issue) => {
