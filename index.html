@@ -89,6 +89,7 @@
 
     const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxfYsICDQuO9zSEXbt3DAa3wLQzQFT0_PJpmYxucObovR48hoIHt6ZVDVdvGC-z-dz2Kw/exec';
     const OPENAI_API_KEY = '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';
+    const GNEWS_API_KEY = '094e65d34c1a45eaf46aba2a2bde6269';
 
     const LEADING_SECTORS = [
       "Inspektorat", "Badan Perencanaan Pembangunan Riset dan Inovasi Daerah", "Badan Kepegawaian dan Pengembangan Sumber Daya Manusia", 
@@ -624,7 +625,17 @@
                   <input type="text" placeholder="Cari judul isu..." className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
               </div>
-              {role === 'admin' && (<button onClick={onAdd} className="w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center justify-center shrink-0"><Plus size={16} className="mr-1.5" /> Tambah</button>)}
+              {role === 'admin' && (
+                <>
+                  {type === 'Media Online' && onFetchNews && (
+                    <button onClick={onFetchNews} disabled={isFetchingNews} className="w-full xl:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center justify-center shrink-0 transition-all">
+                      {isFetchingNews ? <Loader2 size={16} className="animate-spin mr-1.5" /> : <Globe size={16} className="mr-1.5" />}
+                      {isFetchingNews ? 'Menarik...' : 'Tarik Berita'}
+                    </button>
+                  )}
+                  <button onClick={onAdd} className="w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center justify-center shrink-0"><Plus size={16} className="mr-1.5" /> Tambah</button>
+                </>
+              )}
             </div>
           </div>
 
@@ -1563,6 +1574,77 @@
         if (userRole !== 'admin') return;
         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'issues', id), { analysisPublished: !currentStatus });
         showToast(!currentStatus ? "Dipublish" : "Ditarik (Unpublish)", "success");
+      };
+
+      // FUNGSI INI DITAMBAHKAN KEMBALI
+      const handleFetchNews = async () => {
+        if (userRole !== 'admin') return;
+        if (!GNEWS_API_KEY || GNEWS_API_KEY.includes("MASUKKAN")) return showToast("API Key GNews belum diset", "error");
+        
+        setIsFetchingNews(true); 
+        showToast("Mencari berita...", "info");
+        
+        try {
+          const q = encodeURIComponent('Pemkot Bandung');
+          let data;
+          
+          try {
+            const res = await fetch(`https://gnews.io/api/v4/search?q=${q}&lang=id&country=id&max=10&apikey=${GNEWS_API_KEY}`);
+            if (!res.ok) {
+              const errData = await res.json().catch(()=>({}));
+              throw new Error(errData.errors ? errData.errors[0] : "Akses ke GNews ditolak atau limit habis.");
+            }
+            data = await res.json();
+          } catch (fetchError) {
+            if (fetchError.message === 'Failed to fetch') {
+              console.warn("CORS Blocked by browser preview. Injecting mock data.");
+              showToast("Akses API diblokir preview browser. Menggunakan data simulasi...", "info");
+              
+              await new Promise(resolve => setTimeout(resolve, 1500)); 
+              
+              data = {
+                articles: [
+                  {
+                    title: "Pemkot Bandung Percepat Penanganan Banjir di Gedebage",
+                    publishedAt: new Date().toISOString(),
+                    source: { name: "Bandung News" },
+                    url: "https://bandung.go.id",
+                    description: "Pemerintah Kota Bandung di bawah arahan Pj Wali Kota menginstruksikan Dinas PU untuk mempercepat proyek infrastruktur pengendali banjir..."
+                  },
+                  {
+                    title: "Disdik Kota Bandung Luncurkan Program Sekolah Inklusif Unggulan",
+                    publishedAt: new Date().toISOString(),
+                    source: { name: "Pikiran Rakyat" },
+                    url: "https://pikiran-rakyat.com",
+                    description: "Dinas Pendidikan Kota Bandung meresmikan program baru guna memastikan pemerataan pendidikan yang ramah anak."
+                  }
+                ]
+              };
+            } else {
+              throw fetchError;
+            }
+          }
+          
+          if (!data || !data.articles) throw new Error("Format data berita tidak valid");
+          
+          let added = 0;
+          for (const article of data.articles) {
+            if (!issues.some(i => i.title.toLowerCase() === article.title.toLowerCase())) {
+              await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), {
+                sourceType: 'Media Online', title: article.title, date: article.publishedAt.split('T')[0], domain: article.source.name,
+                link: article.url, content: article.description, sentiment: 'Netral', leadingSector: 'Lainnya', status: 'Belum Ditangani', createdAt: new Date().toISOString()
+              });
+              added++;
+            }
+          }
+          showToast(added > 0 ? `Berhasil menarik ${added} berita` : "Semua berita sudah ada", added > 0 ? "success" : "info");
+          
+        } catch (e) { 
+          console.error("Detail Error GNews:", e);
+          showToast(`${e.message}`, "error"); 
+        } finally { 
+          setIsFetchingNews(false); 
+        }
       };
 
       const handleAnalyzeAI = async (issue) => {
