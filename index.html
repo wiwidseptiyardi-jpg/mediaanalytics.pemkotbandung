@@ -2068,17 +2068,39 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
                       <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm">
                         <h4 className="font-bold text-blue-800 mb-4 flex items-center text-sm"><Share2 size={16} className="mr-2"/> Informasi Sumber & Sektor</h4>
                         <div className="space-y-3 text-sm text-slate-700">
-                           <p><strong>Media:</strong> {viewingIssue.sourceType} {viewingIssue.mediaName ? `(${viewingIssue.mediaName})` : ''}</p>
-                           {viewingIssue.platforms && viewingIssue.platforms.filter(Boolean).length > 0 && (
-                              <p><strong>Platform:</strong> {viewingIssue.platforms.filter(Boolean).join(', ')}</p>
+                           <p><strong>Jenis Media:</strong> {viewingIssue.sourceType}</p>
+                           
+                           {viewingIssue.sourceType === 'Media Cetak' && viewingIssue.mediaName && (
+                              <p><strong>Nama Media:</strong> {viewingIssue.mediaName}</p>
                            )}
-                           {!viewingIssue.platforms && viewingIssue.platform && (
-                              <p><strong>Platform:</strong> {viewingIssue.platform}</p>
+
+                           {viewingIssue.sourceType === 'Media Sosial' && (
+                              <>
+                                 {(viewingIssue.platforms && viewingIssue.platforms.filter(Boolean).length > 0) ? (
+                                    <p><strong>Platform:</strong> {viewingIssue.platforms.filter(Boolean).join(', ')}</p>
+                                 ) : (viewingIssue.platform && (
+                                    <p><strong>Platform:</strong> {viewingIssue.platform}</p>
+                                 ))}
+                                 
+                                 {(viewingIssue.accounts && viewingIssue.accounts.filter(Boolean).length > 0) ? (
+                                    <p><strong>Nama Akun:</strong> {viewingIssue.accounts.filter(Boolean).join(', ')}</p>
+                                 ) : (viewingIssue.account && (
+                                    <p><strong>Nama Akun:</strong> {viewingIssue.account}</p>
+                                 ))}
+                              </>
                            )}
-                           {viewingIssue.domains && viewingIssue.domains.filter(Boolean).length > 0 && (
-                              <p><strong>Domain:</strong> {viewingIssue.domains.filter(Boolean).join(', ')}</p>
+
+                           {viewingIssue.sourceType === 'Media Online' && (
+                              <>
+                                 {(viewingIssue.domains && viewingIssue.domains.filter(Boolean).length > 0) ? (
+                                    <p><strong>Domain Berita:</strong> {viewingIssue.domains.filter(Boolean).join(', ')}</p>
+                                 ) : (viewingIssue.domain && (
+                                    <p><strong>Domain Berita:</strong> {viewingIssue.domain}</p>
+                                 ))}
+                              </>
                            )}
-                           {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).length > 0 && (
+
+                           {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).length > 0 && viewingIssue.sourceType !== 'Media Cetak' && (
                               <div>
                                   <strong>Tautan/Link:</strong>
                                   <ul className="list-disc pl-5 mt-1 text-xs space-y-1">
@@ -2088,6 +2110,7 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
                                   </ul>
                               </div>
                            )}
+                           
                            <div>
                                <strong>Leading Sector:</strong>
                                <div className="flex flex-wrap gap-1.5 mt-1.5">
