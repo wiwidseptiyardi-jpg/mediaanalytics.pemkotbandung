@@ -5,19 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Media Monitoring - Pemkot Bandung</title>
 
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- Font Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- html2pdf Library untuk Export Laporan ke PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   
   <style>
-    /* CSS Tambahan untuk Kerapian */
     html { font-size: 13.5px; }
     body { font-family: 'Inter', sans-serif; }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -26,7 +22,6 @@
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 
-  <!-- Import Map untuk mengatasi error react/jsx-runtime -->
   <script type="importmap">
     {
       "imports": {
@@ -34,15 +29,12 @@
       }
     }
   </script>
-
-  <!-- Babel Standalone untuk menjalankan React (JSX) di Browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body class="bg-slate-50">
   
   <div id="root"></div>
 
-  <!-- Script Utama -->
   <script type="text/babel" data-type="module">
     import React, { useState, useEffect, useMemo } from 'https://esm.sh/react@18.3.1';
     import { createRoot } from 'https://esm.sh/react-dom@18.3.1/client';
@@ -53,7 +45,7 @@
       Activity, LogOut, ChevronRight, Upload, CheckCircle2,
       AlertTriangle, Info, Building, FileText,
       Link as LinkIcon, Image as ImageIcon, Loader2, Save, Trash2, Edit2, Eye,
-      Bell, MessageCircle, Brain, Download, Send, Lock, Filter, TrendingUp
+      Bell, MessageCircle, Brain, Download, Send, Lock, Filter, TrendingUp, ChevronLeft
     } from 'https://esm.sh/lucide-react@0.378.0?deps=react@18.3.1';
 
     import { 
@@ -61,7 +53,6 @@
       ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell
     } from 'https://esm.sh/recharts@2.12.7?deps=react@18.3.1,react-dom@18.3.1';
 
-    // CDN Firebase Resmi
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js';
     import { 
       getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
@@ -414,7 +405,6 @@
             </div>
           </div>
 
-          {/* Baris Daftar Isu Prioritas */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col mb-6 mt-4">
               <div className="flex flex-wrap justify-between items-center mb-4 pb-3 border-b border-slate-100 gap-2">
                   <h3 className="font-bold text-slate-800 flex items-center text-sm"><TrendingUp className="mr-2 text-amber-500" size={16} /> Daftar Isu Prioritas (Potensi Isu)</h3>
@@ -584,14 +574,104 @@
       );
     }
 
-    function DataTableView({ title, type, issues, onAdd, onEdit, onDelete, role, onView, onFetchNews, isFetchingNews }) {
+    function FetchNewsView({ onFetchNews, isFetchingNews, fetchedNewsList = [], onApprove, onDiscard }) {
+      const [keyword, setKeyword] = useState('Pemkot Bandung');
+      const [fromDate, setFromDate] = useState('');
+      const [toDate, setToDate] = useState('');
+
+      return (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-end gap-4 border-b border-slate-100 pb-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800 flex items-center">
+                <Download className="mr-2 text-blue-600" /> Tarik Berita Otomatis
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">Cari dan simpan berita dari Google News secara otomatis untuk dikumpulkan ke Draft.</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+             <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Kata Kunci (Keyword)</label>
+                <input type="text" value={keyword} onChange={e => setKeyword(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="Cth: Pemkot Bandung" />
+             </div>
+             <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Dari Tanggal</label>
+                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+             </div>
+             <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Sampai Tanggal</label>
+                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-full px-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+             </div>
+          </div>
+
+          <button onClick={() => onFetchNews(keyword, fromDate, toDate)} disabled={isFetchingNews || !keyword} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-sm font-bold shadow-md flex items-center justify-center transition-all disabled:opacity-50">
+             {isFetchingNews ? <Loader2 size={18} className="animate-spin mr-2" /> : <Download size={18} className="mr-2" />}
+             {isFetchingNews ? 'Sedang Menarik Berita...' : 'Mulai Tarik Berita'}
+          </button>
+
+          {fetchedNewsList && fetchedNewsList.length > 0 ? (
+            <div className="mt-8 border-t border-slate-100 pt-6">
+              <div className="flex justify-between items-center mb-4">
+                 <h3 className="font-bold text-slate-800">Hasil Tarikan Belum Disimpan (Draft) ({fetchedNewsList.length})</h3>
+                 <button onClick={() => onDiscard(null, true)} className="text-xs text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg font-bold transition-colors">Hapus Semua</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                 {fetchedNewsList.map(news => (
+                    <div key={news.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col relative">
+                       <div className="flex justify-between items-start mb-2">
+                          <span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100">{news.domain}</span>
+                          <span className="text-[10px] text-slate-400">{news.date}</span>
+                       </div>
+                       <h4 className="font-bold text-slate-800 text-sm mb-2 line-clamp-2" title={news.title}>{news.title}</h4>
+                       <p className="text-xs text-slate-600 mb-4 line-clamp-3 flex-1">{news.content}</p>
+                       <div className="flex gap-2 mt-auto pt-3 border-t border-slate-100">
+                          <button onClick={() => onApprove(news)} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center shadow-sm">
+                             <Save size={14} className="mr-1.5"/> Simpan ke Sistem
+                          </button>
+                          <button onClick={() => onDiscard(news.id)} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-red-600 rounded-lg transition-colors" title="Hapus Berita Ini">
+                             <Trash2 size={14}/>
+                          </button>
+                       </div>
+                    </div>
+                 ))}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+               <Info className="text-blue-600 shrink-0 mt-0.5" size={18}/>
+               <div className="text-sm text-blue-800">
+                  <p className="font-bold mb-1">Catatan Penggunaan:</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                     <li>Fitur ini akan menarik maksimal 10 berita terbaru berdasarkan kata kunci dan rentang tanggal yang dipilih.</li>
+                     <li>Berita yang ditarik akan <strong>muncul di sini terlebih dahulu sebagai Draft</strong>. Anda dapat meninjau dan memilih berita mana yang akan disimpan ke sistem (Media Online).</li>
+                     <li>Sistem otomatis mengabaikan berita dengan judul yang sama dengan yang sudah ada di sistem.</li>
+                  </ul>
+               </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function DataTableView({ title, type, issues, onAdd, onEdit, onDelete, role, onView }) {
       const [searchTerm, setSearchTerm] = useState('');
-      const [filterDate, setFilterDate] = useState('');
+      const [filterDateStart, setFilterDateStart] = useState('');
+      const [filterDateEnd, setFilterDateEnd] = useState('');
       const [filterSector, setFilterSector] = useState('');
+      const [currentPage, setCurrentPage] = useState(1);
+      const itemsPerPage = 10;
 
       const filteredIssues = issues.filter(issue => {
         let matches = true;
-        if (filterDate && issue.date !== filterDate) matches = false;
+        
+        // Filter Date Range
+        if (issue.date) {
+            if (filterDateStart && issue.date < filterDateStart) matches = false;
+            if (filterDateEnd && issue.date > filterDateEnd) matches = false;
+        } else if (filterDateStart || filterDateEnd) {
+            matches = false; // Jika filter aktif tapi isu tidak ada tanggal
+        }
         
         const sectors = issue.leadingSectors || (issue.leadingSector ? [issue.leadingSector] : []);
         if (filterSector && !sectors.includes(filterSector)) matches = false;
@@ -600,63 +680,64 @@
         return matches;
       });
 
-      const sortedIssues = [...filteredIssues].sort((a, b) => {
-        const dateA = new Date(a.date || 0);
-        const dateB = new Date(b.date || 0);
-        return dateB - dateA;
-      }).slice(0, 10);
+      const sortedIssues = [...filteredIssues].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+      
+      const totalPages = Math.ceil(sortedIssues.length / itemsPerPage) || 1;
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const currentItems = sortedIssues.slice(startIndex, startIndex + itemsPerPage);
+
+      useEffect(() => {
+          setCurrentPage(1); // Reset page on filter change
+      }, [searchTerm, filterDateStart, filterDateEnd, filterSector]);
 
       return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full">
           <div className="p-6 border-b border-slate-100 bg-white flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sticky top-0 z-10">
             <div>
               <h2 className="text-xl font-bold text-slate-800">{title}</h2>
-              <p className="text-sm text-slate-500 mt-1">Total {sortedIssues.length} data ditampilkan</p>
+              <p className="text-sm text-slate-500 mt-1">Total {sortedIssues.length} data ditemukan</p>
             </div>
             <div className="flex flex-col xl:flex-row w-full xl:w-auto items-start xl:items-center gap-3">
-              <div className="flex flex-col sm:flex-row w-full gap-2">
-                <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm w-full sm:w-auto cursor-pointer" title="Filter berdasarkan tanggal" />
-                <select value={filterSector} onChange={(e) => setFilterSector(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm w-full sm:max-w-[180px] truncate cursor-pointer bg-white" title="Filter berdasarkan perangkat daerah">
-                  <option value="">Semua Perangkat Daerah</option>
+              <div className="flex flex-col sm:flex-row w-full gap-2 items-center">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                    <span className="text-xs font-bold text-slate-500 hidden md:block">Tgl:</span>
+                    <input type="date" value={filterDateStart} onChange={(e) => setFilterDateStart(e.target.value)} className="px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs w-full sm:w-auto cursor-pointer focus:ring-2 focus:ring-blue-500" title="Dari Tanggal" />
+                    <span className="text-xs text-slate-400">-</span>
+                    <input type="date" value={filterDateEnd} onChange={(e) => setFilterDateEnd(e.target.value)} className="px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-xs w-full sm:w-auto cursor-pointer focus:ring-2 focus:ring-blue-500" title="Sampai Tanggal" />
+                </div>
+                <select value={filterSector} onChange={(e) => setFilterSector(e.target.value)} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm w-full sm:max-w-[180px] truncate cursor-pointer bg-white">
+                  <option value="">Semua OPD</option>
                   {LEADING_SECTORS.map(sec => <option key={sec} value={sec}>{sec}</option>)}
                 </select>
-                <div className="relative flex-1">
+                <div className="relative w-full sm:w-48">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input type="text" placeholder="Cari judul isu..." className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                  <input type="text" placeholder="Cari isu..." className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
               </div>
               {role === 'admin' && (
-                <>
-                  {type === 'Media Online' && onFetchNews && (
-                    <button onClick={onFetchNews} disabled={isFetchingNews} className="w-full xl:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center justify-center shrink-0 transition-all">
-                      {isFetchingNews ? <Loader2 size={16} className="animate-spin mr-1.5" /> : <Globe size={16} className="mr-1.5" />}
-                      {isFetchingNews ? 'Menarik...' : 'Tarik Berita'}
-                    </button>
-                  )}
-                  <button onClick={onAdd} className="w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center justify-center shrink-0"><Plus size={16} className="mr-1.5" /> Tambah</button>
-                </>
+                <button onClick={onAdd} className="w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow flex items-center justify-center shrink-0"><Plus size={16} className="mr-1.5" /> Tambah Data</button>
               )}
             </div>
           </div>
 
-          <div className="overflow-x-auto p-4">
+          <div className="overflow-x-auto p-4 flex-1">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
-                  <th className="p-4 font-bold rounded-tl-lg">Tanggal</th>
-                  <th className="p-4 font-bold">Judul Isu</th>
-                  <th className="p-4 font-bold">Leading Sector</th>
-                  <th className="p-4 font-bold text-center">Sentimen</th>
-                  <th className="p-4 font-bold text-center">Status</th>
-                  <th className="p-4 font-bold text-right rounded-tr-lg">Aksi</th>
+                  <th className="p-4 font-bold rounded-tl-lg w-24">Tanggal</th>
+                  <th className="p-4 font-bold min-w-[200px]">Judul Isu</th>
+                  <th className="p-4 font-bold min-w-[150px]">Leading Sector</th>
+                  <th className="p-4 font-bold text-center w-24">Sentimen</th>
+                  <th className="p-4 font-bold text-center w-32">Status</th>
+                  <th className="p-4 font-bold text-right rounded-tr-lg w-24">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {sortedIssues.map((issue) => (
+                {currentItems.map((issue) => (
                   <tr key={issue.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="p-4 text-slate-600">{issue.date}</td>
-                    <td className="p-4 font-medium text-slate-800 max-w-[250px] truncate" title={issue.title}>{issue.title}</td>
-                    <td className="p-4 text-slate-600 max-w-[150px] truncate" title={(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}>
+                    <td className="p-4 font-medium text-slate-800 max-w-[300px] truncate" title={issue.title}>{issue.title}</td>
+                    <td className="p-4 text-slate-600 max-w-[200px] truncate" title={(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}>
                         {(issue.leadingSectors || [issue.leadingSector]).filter(Boolean).join(', ')}
                     </td>
                     <td className="p-4 text-center">
@@ -665,7 +746,7 @@
                     <td className="p-4 text-center">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold ${issue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : issue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{issue.status || 'Belum Ditangani'}</span>
                     </td>
-                    <td className="p-4 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <td className="p-4 text-right opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex justify-end">
                       <button onClick={() => onView(issue)} className="p-2 text-slate-400 hover:text-blue-600 rounded-lg mr-1"><Eye size={16} /></button>
                       {role === 'admin' && (
                         <>
@@ -676,10 +757,36 @@
                     </td>
                   </tr>
                 ))}
-                {sortedIssues.length === 0 && (<tr><td colSpan="6" className="p-8 text-center text-slate-500">Tidak ada data.</td></tr>)}
+                {currentItems.length === 0 && (<tr><td colSpan="6" className="p-8 text-center text-slate-500">Tidak ada data.</td></tr>)}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                  <span className="text-xs text-slate-500">Halaman {currentPage} dari {totalPages}</span>
+                  <div className="flex gap-1">
+                      <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"><ChevronLeft size={16}/></button>
+                      
+                      {/* Tampilkan nomor halaman (batas maks 5 tombol agar tidak panjang) */}
+                      {Array.from({length: Math.min(5, totalPages)}, (_, i) => {
+                          let pageNum = i + 1;
+                          if (totalPages > 5 && currentPage > 3) {
+                              pageNum = currentPage - 2 + i;
+                              if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+                          }
+                          return (
+                              <button key={pageNum} onClick={() => setCurrentPage(pageNum)} className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors border ${currentPage === pageNum ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'}`}>
+                                  {pageNum}
+                              </button>
+                          )
+                      })}
+                      
+                      <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"><ChevronRight size={16}/></button>
+                  </div>
+              </div>
+          )}
         </div>
       );
     }
@@ -905,7 +1012,7 @@
         if (type === 'Media Cetak') {
             dataToSave.mediaName = formData.mediaName === 'Lainnya' ? formData.customMediaName : formData.mediaName;
             delete dataToSave.customMediaName;
-            delete dataToSave.links; // Pastikan link tidak disimpan untuk media cetak
+            delete dataToSave.links;
         }
         delete dataToSave.customIssueCategory;
         onSave(dataToSave, file);
@@ -1301,6 +1408,7 @@
       const [editingAnalysisIssue, setEditingAnalysisIssue] = useState(null);
       const [potensiIsuList, setPotensiIsuList] = useState([]);
       const [isFetchingNews, setIsFetchingNews] = useState(false);
+      const [fetchedNewsList, setFetchedNewsList] = useState([]);
       const [confirmDialog, setConfirmDialog] = useState(null);
 
       const showToast = (message, type = 'info') => {
@@ -1404,7 +1512,6 @@
           reader.readAsDataURL(file);
           reader.onload = async () => {
             try {
-              // Kirim request upload ke Google Apps Script Anda
               const response = await fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1417,11 +1524,10 @@
               
               const result = await response.json();
               if (result.status === 'success') {
-                resolve(result.fileUrl); // Berhasil mendapatkan link Google Drive
+                resolve(result.fileUrl); 
               } else {
                 let errMsg = result.message || "Gagal mengunggah ke Google Drive";
                 console.error("Backend response message:", errMsg);
-                // Deteksi error izin DriveApp untuk memberikan pesan yang lebih ramah
                 if (errMsg.includes("DriveApp") || errMsg.includes("izin") || errMsg.includes("permission") || errMsg.includes("Authorization")) {
                    errMsg = "Akses Ditolak: Apps Script kekurangan izin 'DriveApp.createFolder'. Solusi: Buka editor Apps Script, tambahkan fungsi 'function PANCING() { DriveApp.createFolder(\"Test\"); }', jalankan fungsi PANCING tersebut, berikan izin, lalu wajib Deploy sebagai Versi Baru.";
                 }
@@ -1576,8 +1682,7 @@
         showToast(!currentStatus ? "Dipublish" : "Ditarik (Unpublish)", "success");
       };
 
-      // FUNGSI INI DITAMBAHKAN KEMBALI
-      const handleFetchNews = async () => {
+      const handleFetchNews = async (searchKeyword, fromDateStr, toDateStr) => {
         if (userRole !== 'admin') return;
         if (!GNEWS_API_KEY || GNEWS_API_KEY.includes("MASUKKAN")) return showToast("API Key GNews belum diset", "error");
         
@@ -1585,11 +1690,14 @@
         showToast("Mencari berita...", "info");
         
         try {
-          const q = encodeURIComponent('Pemkot Bandung');
+          const q = encodeURIComponent(searchKeyword || 'Pemkot Bandung');
+          let url = `https://gnews.io/api/v4/search?q=${q}&lang=id&country=id&max=10&apikey=${GNEWS_API_KEY}`;
+          if (fromDateStr) url += `&from=${fromDateStr}T00:00:00Z`;
+          if (toDateStr) url += `&to=${toDateStr}T23:59:59Z`;
+
           let data;
-          
           try {
-            const res = await fetch(`https://gnews.io/api/v4/search?q=${q}&lang=id&country=id&max=10&apikey=${GNEWS_API_KEY}`);
+            const res = await fetch(url);
             if (!res.ok) {
               const errData = await res.json().catch(()=>({}));
               throw new Error(errData.errors ? errData.errors[0] : "Akses ke GNews ditolak atau limit habis.");
@@ -1599,25 +1707,12 @@
             if (fetchError.message === 'Failed to fetch') {
               console.warn("CORS Blocked by browser preview. Injecting mock data.");
               showToast("Akses API diblokir preview browser. Menggunakan data simulasi...", "info");
-              
               await new Promise(resolve => setTimeout(resolve, 1500)); 
               
               data = {
                 articles: [
-                  {
-                    title: "Pemkot Bandung Percepat Penanganan Banjir di Gedebage",
-                    publishedAt: new Date().toISOString(),
-                    source: { name: "Bandung News" },
-                    url: "https://bandung.go.id",
-                    description: "Pemerintah Kota Bandung di bawah arahan Pj Wali Kota menginstruksikan Dinas PU untuk mempercepat proyek infrastruktur pengendali banjir..."
-                  },
-                  {
-                    title: "Disdik Kota Bandung Luncurkan Program Sekolah Inklusif Unggulan",
-                    publishedAt: new Date().toISOString(),
-                    source: { name: "Pikiran Rakyat" },
-                    url: "https://pikiran-rakyat.com",
-                    description: "Dinas Pendidikan Kota Bandung meresmikan program baru guna memastikan pemerataan pendidikan yang ramah anak."
-                  }
+                  { title: `Simulasi Berita ${searchKeyword || 'Pemkot'} 1`, publishedAt: new Date().toISOString(), source: { name: "Bandung News" }, url: "https://bandung.go.id", description: "Pemerintah Kota Bandung menginstruksikan percepatan proyek..." },
+                  { title: `Simulasi Berita ${searchKeyword || 'Pemkot'} 2`, publishedAt: new Date().toISOString(), source: { name: "Pikiran Rakyat" }, url: "https://pikiran-rakyat.com", description: "Dinas Pendidikan Kota Bandung meresmikan program baru..." }
                 ]
               };
             } else {
@@ -1627,23 +1722,62 @@
           
           if (!data || !data.articles) throw new Error("Format data berita tidak valid");
           
-          let added = 0;
+          let newFetched = [];
           for (const article of data.articles) {
-            if (!issues.some(i => i.title.toLowerCase() === article.title.toLowerCase())) {
-              await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), {
-                sourceType: 'Media Online', title: article.title, date: article.publishedAt.split('T')[0], domain: article.source.name,
-                link: article.url, content: article.description, sentiment: 'Netral', leadingSector: 'Lainnya', status: 'Belum Ditangani', createdAt: new Date().toISOString()
+            const isExistInSystem = issues.some(i => i.title.toLowerCase() === article.title.toLowerCase());
+            const isExistInPending = fetchedNewsList.some(i => i.title.toLowerCase() === article.title.toLowerCase());
+            
+            if (!isExistInSystem && !isExistInPending) {
+              newFetched.push({
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                sourceType: 'Media Online', 
+                title: article.title, 
+                date: article.publishedAt.split('T')[0], 
+                domain: article.source.name,
+                link: article.url, 
+                content: article.description, 
+                sentiment: 'Netral', 
+                leadingSector: 'Lainnya',
+                leadingSectors: ['Lainnya'],
+                status: 'Belum Ditangani'
               });
-              added++;
             }
           }
-          showToast(added > 0 ? `Berhasil menarik ${added} berita` : "Semua berita sudah ada", added > 0 ? "success" : "info");
+          
+          if (newFetched.length > 0) {
+            setFetchedNewsList(prev => [...prev, ...newFetched]);
+            showToast(`Berhasil menemukan ${newFetched.length} berita baru`, "success");
+          } else {
+            showToast("Semua berita dari pencarian ini sudah ada di sistem atau daftar tarikan.", "info");
+          }
           
         } catch (e) { 
           console.error("Detail Error GNews:", e);
           showToast(`${e.message}`, "error"); 
         } finally { 
           setIsFetchingNews(false); 
+        }
+      };
+
+      const handleApproveNews = async (newsItem) => {
+        if (userRole !== 'admin') return;
+        try {
+          const { id, ...dataToSave } = newsItem;
+          await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'issues'), {
+            ...dataToSave, createdAt: new Date().toISOString()
+          });
+          setFetchedNewsList(prev => prev.filter(n => n.id !== newsItem.id));
+          showToast("Berita berhasil disimpan ke Media Online", "success");
+        } catch (error) {
+          showToast("Gagal menyimpan berita", "error");
+        }
+      };
+
+      const handleDiscardNews = (id = null, clearAll = false) => {
+        if (clearAll) {
+          setFetchedNewsList([]);
+        } else {
+          setFetchedNewsList(prev => prev.filter(n => n.id !== id));
         }
       };
 
@@ -1976,297 +2110,299 @@ Format KELUARAN HARUS berupa JSON murni dengan struktur:
         window.open(url, '_blank');
       };
 
-  if (!isFirebaseConfigured) return <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4"><div className="bg-white p-8 rounded-2xl shadow-lg"><h2 className="font-bold text-xl">Konfigurasi Firebase Diperlukan</h2></div></div>;
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="w-10 h-10 animate-spin text-blue-600"/></div>;
-  if (!user) return <AuthScreen onLogin={setUser} setGlobalRole={setUserRole} setGlobalProfile={setUserProfile} showToast={showToast} />;
+      if (!isFirebaseConfigured) return <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4"><div className="bg-white p-8 rounded-2xl shadow-lg"><h2 className="font-bold text-xl">Konfigurasi Firebase Diperlukan</h2></div></div>;
+      if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="w-10 h-10 animate-spin text-blue-600"/></div>;
+      if (!user) return <AuthScreen onLogin={setUser} setGlobalRole={setUserRole} setGlobalProfile={setUserProfile} showToast={showToast} />;
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'social', label: 'Media Sosial', icon: Share2 },
-    { id: 'online', label: 'Media Online', icon: Globe },
-    { id: 'print', label: 'Media Cetak', icon: Newspaper },
-    { id: 'analysis', label: 'Analisis Isu', icon: Brain },
-  ];
+      // Dynamic Sidebar Navigation based on Role
+      const navItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        ...(userRole === 'admin' ? [{ id: 'fetch_news', label: 'Tarik Berita', icon: Download }] : []),
+        { id: 'social', label: 'Media Sosial', icon: Share2 },
+        { id: 'online', label: 'Media Online', icon: Globe },
+        { id: 'print', label: 'Media Cetak', icon: Newspaper },
+        { id: 'analysis', label: 'Analisis Isu', icon: Brain },
+      ];
 
-  return (
-    <div className="min-h-screen bg-slate-50 flex overflow-hidden font-sans">
-      {toast.show && (<div className={`fixed top-4 right-4 z-[9999] px-5 py-2.5 text-sm rounded-xl shadow-2xl flex items-center animate-bounce ${toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'} text-white`}><span className="font-medium">{toast.message}</span></div>)}
-      
-      <aside className={`bg-slate-900 text-slate-300 w-56 flex-shrink-0 flex flex-col transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full fixed h-full z-40'}`}>
-        <div className="p-5 bg-slate-950 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Activity className="text-blue-500" size={20}/>
-            <div className="flex flex-col">
-              <span className="text-white font-bold text-sm">Media Monitoring</span>
-              <span className="text-slate-400 text-[9px] leading-tight mt-0.5">Pemerintah Kota Bandung</span>
-            </div>
-          </div>
-        </div>
-        <nav className="flex-1 py-4 px-3 space-y-1">
-          {navItems.map(item => (<button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${activeTab === item.id ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800'}`}><item.icon size={18} /><span className="font-bold text-xs">{item.label}</span></button>))}
-        </nav>
-        <div className="p-4"><button onClick={handleLogout} className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 transition-colors text-red-400 rounded-lg flex justify-center text-xs font-bold"><LogOut size={16} className="mr-2"/> Logout</button></div>
-      </aside>
-
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <header className="bg-white px-5 py-3 border-b flex justify-between items-center">
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-slate-100 bg-slate-50 border rounded-lg"><Menu size={18}/></button>
-          <div className="flex items-center gap-4">
-            <span className="hidden sm:inline-block font-bold text-[11px] bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full shadow-sm">{userProfile?.name} ({userRole === 'admin' ? 'Admin' : (userRole === 'pimpinan' ? 'Pimpinan' : userProfile?.agency)})</span>
-            
-            {/* Panel Notifikasi In-App */}
-            <div className="relative">
-              <button onClick={() => setShowNotifPanel(!showNotifPanel)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 relative transition-colors">
-                <Bell size={18}/>
-                {notifications.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>}
-              </button>
-              
-              {showNotifPanel && (
-                <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 shadow-2xl rounded-2xl z-50 overflow-hidden">
-                   <div className="p-4 bg-slate-50 border-b flex justify-between items-center">
-                     <span className="font-bold text-slate-800 text-sm">Notifikasi Isu Baru</span>
-                     <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{notifications.length} Baru</span>
-                   </div>
-                   <div className="max-h-72 overflow-y-auto custom-scrollbar">
-                     {notifications.length > 0 ? notifications.map(n => (
-                       <div key={n.id} onClick={() => { setViewingIssue(n); setShowNotifPanel(false); }} className="p-4 border-b hover:bg-slate-50 cursor-pointer transition-colors">
-                         <p className="text-[10px] font-bold text-blue-600 mb-1 line-clamp-1">{(n.leadingSectors || [n.leadingSector]).filter(Boolean).join(', ')}</p>
-                         <p className="text-xs font-semibold text-slate-800 line-clamp-2">{n.title}</p>
-                         <div className="flex justify-between items-center mt-2">
-                           <span className="text-[9px] text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">{n.sourceType}</span>
-                           <span className="text-[9px] text-slate-400">{n.date}</span>
-                         </div>
-                       </div>
-                     )) : <p className="p-6 text-xs text-center text-slate-500">Belum ada isu baru untuk OPD Anda.</p>}
-                   </div>
+      return (
+        <div className="min-h-screen bg-slate-50 flex overflow-hidden font-sans">
+          {toast.show && (<div className={`fixed top-4 right-4 z-[9999] px-5 py-2.5 text-sm rounded-xl shadow-2xl flex items-center animate-bounce ${toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'} text-white`}><span className="font-medium">{toast.message}</span></div>)}
+          
+          <aside className={`bg-slate-900 text-slate-300 w-56 flex-shrink-0 flex flex-col transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full fixed h-full z-40'}`}>
+            <div className="p-5 bg-slate-950 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Activity className="text-blue-500" size={20}/>
+                <div className="flex flex-col">
+                  <span className="text-white font-bold text-sm">Media Monitoring</span>
+                  <span className="text-slate-400 text-[9px] leading-tight mt-0.5">Pemerintah Kota Bandung</span>
                 </div>
-              )}
-            </div>
-          </div>
-        </header>
-        <div className="flex-1 overflow-y-auto p-5 scroll-smooth"><div className="max-w-7xl mx-auto">
-          {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} potensiIsuList={potensiIsuList} role={userRole} onSavePotensiIsu={savePotensiIsu} showToast={showToast} />}
-          {activeTab === 'social' && <DataTableView title="Media Sosial" type="Media Sosial" issues={issues.filter(i=>i.sourceType==='Media Sosial')} onAdd={()=>setIsIssueModalOpen('Media Sosial')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Sosial');}} onDelete={triggerDeleteIssue} role={userRole} onView={setViewingIssue} />}
-          {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={triggerDeleteIssue} role={userRole} onView={setViewingIssue} onFetchNews={handleFetchNews} isFetchingNews={isFetchingNews} />}
-          {activeTab === 'print' && <DataTableView title="Media Cetak" type="Media Cetak" issues={issues.filter(i=>i.sourceType==='Media Cetak')} onAdd={()=>setIsIssueModalOpen('Media Cetak')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Cetak');}} onDelete={triggerDeleteIssue} role={userRole} onView={setViewingIssue} />}
-          {activeTab === 'analysis' && <AnalysisView issues={issues} role={userRole} agency={userProfile?.agency} onAnalyze={handleAnalyzeAI} analyzingId={analyzingId} onView={setViewingIssue} onPublishToggle={togglePublishAnalysis} onEditAnalysis={setEditingAnalysisIssue} onDelete={triggerDeleteIssue} onDownloadAll={handleDownloadAllWord} onDownloadRecap={handleDownloadRecapWord} />}
-        </div></div>
-        
-        {isIssueModalOpen && <IssueModal type={isIssueModalOpen} onClose={() => {setIsIssueModalOpen(false); setEditingIssue(null);}} onSave={saveIssue} initialData={editingIssue} isUploading={isUploading} showToast={showToast}/>}
-        {handlingIssue && <HandlingModal issue={handlingIssue} onClose={() => {setHandlingIssue(null); setViewingIssue(handlingIssue);}} onSave={saveHandlingUpdate} isUploading={isUploading} role={userRole} userAgency={userProfile?.agency} showToast={showToast}/>}
-        {editingAnalysisIssue && <AnalysisEditModal issue={editingAnalysisIssue} onClose={() => setEditingAnalysisIssue(null)} onSave={saveAnalysisEdit} isUploading={isUploading}/>}
-
-        {viewingIssue && (
-          <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-             <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl p-6 overflow-y-auto max-h-[90vh] relative">
-                <button onClick={()=>setViewingIssue(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X size={20}/></button>
-                <h2 className="text-2xl font-bold mb-6 pr-10 text-slate-800">{viewingIssue.title}</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                   
-                   {/* KOLOM KIRI: Informasi & Konten */}
-                   <div className="space-y-4">
-                      <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm">
-                        <h4 className="font-bold text-blue-800 mb-4 flex items-center text-sm"><Share2 size={16} className="mr-2"/> Informasi Sumber & Sektor</h4>
-                        <div className="space-y-3 text-sm text-slate-700">
-                           <p><strong>Jenis Media:</strong> {viewingIssue.sourceType}</p>
-                           
-                           {viewingIssue.sourceType === 'Media Cetak' && viewingIssue.mediaName && (
-                              <p><strong>Nama Media:</strong> {viewingIssue.mediaName}</p>
-                           )}
-
-                           {viewingIssue.sourceType === 'Media Sosial' && (
-                              <>
-                                 {(viewingIssue.platforms && viewingIssue.platforms.filter(Boolean).length > 0) ? (
-                                    <p><strong>Platform:</strong> {viewingIssue.platforms.filter(Boolean).join(', ')}</p>
-                                 ) : (viewingIssue.platform && (
-                                    <p><strong>Platform:</strong> {viewingIssue.platform}</p>
-                                 ))}
-                                 
-                                 {(viewingIssue.accounts && viewingIssue.accounts.filter(Boolean).length > 0) ? (
-                                    <p><strong>Nama Akun:</strong> {viewingIssue.accounts.filter(Boolean).join(', ')}</p>
-                                 ) : (viewingIssue.account && (
-                                    <p><strong>Nama Akun:</strong> {viewingIssue.account}</p>
-                                 ))}
-                              </>
-                           )}
-
-                           {viewingIssue.sourceType === 'Media Online' && (
-                              <>
-                                 {(viewingIssue.domains && viewingIssue.domains.filter(Boolean).length > 0) ? (
-                                    <p><strong>Domain Berita:</strong> {viewingIssue.domains.filter(Boolean).join(', ')}</p>
-                                 ) : (viewingIssue.domain && (
-                                    <p><strong>Domain Berita:</strong> {viewingIssue.domain}</p>
-                                 ))}
-                              </>
-                           )}
-
-                           {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).length > 0 && viewingIssue.sourceType !== 'Media Cetak' && (
-                              <div>
-                                  <strong>Tautan/Link:</strong>
-                                  <ul className="list-disc pl-5 mt-1 text-xs space-y-1">
-                                      {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).map((l, i) => (
-                                          <li key={i}><a href={l} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">{l}</a></li>
-                                      ))}
-                                  </ul>
-                              </div>
-                           )}
-                           
-                           <div>
-                               <strong>Leading Sector:</strong>
-                               <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                  {(viewingIssue.leadingSectors || [viewingIssue.leadingSector]).filter(Boolean).map((s, i) => (
-                                      <span key={i} className="text-xs bg-white border border-blue-200 text-blue-700 px-2 py-1 rounded font-bold shadow-sm">{s}</span>
-                                  ))}
-                               </div>
-                           </div>
-                           {viewingIssue.attachmentUrl && (
-                              <div className="mt-2 pt-3 border-t border-blue-200">
-                                  <a href={viewingIssue.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm"><ImageIcon size={14} className="mr-1.5"/> Lihat Lampiran Isu</a>
-                              </div>
-                           )}
-                        </div>
-                      </div>
-
-                      <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                        <p className="text-sm font-bold text-slate-500 mb-2">Isi/Konten</p>
-                        <p className="text-sm text-slate-800 whitespace-pre-wrap">{viewingIssue.content || viewingIssue.caption || '-'}</p>
-                      </div>
-                      
-                      {/* Daftar Komentar Netizen untuk Medsos */}
-                      {viewingIssue.sourceType === 'Media Sosial' && viewingIssue.comments && viewingIssue.comments.length > 0 && (
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                          <p className="text-sm font-bold text-slate-500 mb-3">Komentar Netizen</p>
-                          <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
-                            {viewingIssue.comments.map((c, i) => (
-                              <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
-                                <div className="flex justify-between items-center mb-1.5">
-                                  <span className="text-xs font-bold text-blue-600">@{c.account || 'anonim'}</span>
-                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${c.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : c.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{c.sentiment}</span>
-                                </div>
-                                <p className="text-sm text-slate-700">{c.content}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
-                        <div className="flex justify-between items-center mb-4">
-                           <p className="font-bold text-slate-800 text-sm">Riwayat Penanganan</p>
-                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${viewingIssue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : viewingIssue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{viewingIssue.status || 'Belum Ditangani'}</span>
-                        </div>
-                        
-                        <div className="space-y-4 max-h-60 overflow-y-auto custom-scrollbar pr-2">
-                           {viewingIssue.handlingList && viewingIssue.handlingList.length > 0 ? (
-                              viewingIssue.handlingList.map((h, i) => (
-                                 <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm relative group">
-                                    {userRole === 'admin' && (
-                                        <button 
-                                            onClick={() => handleDeleteHandlingRecord(viewingIssue.id, i)}
-                                            className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                            title="Hapus Progress Ini"
-                                        >
-                                            <Trash2 size={14}/>
-                                        </button>
-                                    )}
-                                    <div className="flex justify-between items-start mb-1 pr-8">
-                                       <span className="text-[11px] font-bold text-blue-600">{h.agency}</span>
-                                       <span className="text-[10px] text-slate-400">{h.handlingDate}</span>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 mb-2">Status: <strong className="text-slate-700">{h.status}</strong> (by: {h.updatedBy})</p>
-                                    <p className="text-xs text-slate-700 whitespace-pre-wrap">{h.handlingNotes}</p>
-                                    {h.handlingAttachmentUrl && (
-                                      <a href={h.handlingAttachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-2 bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[10px] font-bold hover:bg-emerald-100"><ImageIcon size={12} className="mr-1"/> Lihat Bukti</a>
-                                    )}
-                                 </div>
-                              ))
-                           ) : (
-                              // Tampilan Lama / Jika belum pakai sistem Array
-                              viewingIssue.handlingNotes ? (
-                                <div className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm relative group">
-                                    <div className="flex justify-between items-start mb-1 pr-8">
-                                       <span className="text-[11px] font-bold text-blue-600">Catatan Penanganan (Lama)</span>
-                                       <span className="text-[10px] text-slate-400">{viewingIssue.handlingDate}</span>
-                                    </div>
-                                    <p className="text-xs text-slate-700 whitespace-pre-wrap">{viewingIssue.handlingNotes}</p>
-                                    {viewingIssue.handlingAttachmentUrl && (
-                                      <a href={viewingIssue.handlingAttachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-2 bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[10px] font-bold hover:bg-emerald-100"><ImageIcon size={12} className="mr-1"/> Lihat Bukti</a>
-                                    )}
-                                </div>
-                              ) : (
-                                 <p className="text-xs text-slate-400 text-center py-2">Belum ada riwayat progres penanganan instansi.</p>
-                              )
-                           )}
-                        </div>
-
-                        {(userRole === 'admin' || (viewingIssue.leadingSectors || []).includes(userProfile?.agency)) && (
-                          <button onClick={() => {setHandlingIssue(viewingIssue); setViewingIssue(null);}} className="w-full mt-4 bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm flex items-center justify-center shadow-md hover:bg-emerald-700 transition-colors"><Plus size={16} className="mr-2"/> Tambah Progress Penanganan</button>
-                        )}
-                      </div>
-                   </div>
-                   
-                   {/* KOLOM KANAN: Analisis AI */}
-                   <div>
-                     {viewingIssue.aiAnalysis && (userRole === 'admin' || userRole === 'pimpinan' || (viewingIssue.leadingSectors || [viewingIssue.leadingSector]).includes(userProfile?.agency)) ? (
-                        <div className="bg-amber-50 p-6 rounded-xl border border-amber-200 h-full flex flex-col shadow-sm">
-                          <div className="flex flex-wrap justify-between items-start mb-5 border-b border-amber-200 pb-4 gap-2">
-                             <h4 className="font-bold text-amber-900 flex items-center text-lg"><Brain className="mr-2 text-amber-600"/> Hasil Analisis & Rekomendasi</h4>
-                             <div className="flex gap-2">
-                                 <button onClick={() => handleDownloadWord(viewingIssue)} className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">DOCX</button>
-                                 <button onClick={() => handleDownloadPDF(viewingIssue)} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">PDF</button>
-                                 <button onClick={() => handleSendWA(viewingIssue)} className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded font-bold transition-colors shadow-sm flex items-center" title="Kirim Laporan via WhatsApp"><MessageCircle size={14}/></button>
-                             </div>
-                          </div>
-                          
-                          <div className="flex-1 overflow-y-auto pr-2 space-y-5">
-                            <div>
-                               <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Analisis:</p>
-                               <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.analysis || "Belum ada teks analisis."}</p>
-                            </div>
-                            <div>
-                               <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Rekomendasi Kebijakan:</p>
-                               <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.policyRecommendation || "-"}</p>
-                            </div>
-                            <div>
-                               <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Rekomendasi Publikasi:</p>
-                               <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.publicationRecommendation || "-"}</p>
-                            </div>
-                          </div>
-                        </div>
-                     ) : (
-                       <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-slate-500 h-full flex flex-col items-center justify-center">
-                         <Lock size={32} className="mb-3 text-slate-300"/>
-                         {userRole === 'admin' ? "Pilih tombol analisis untuk memproses isu ini." : "Isu ini belum dianalisis atau bukan kewenangan Anda."}
-                       </div>
-                     )}
-                   </div>
-                </div>
-             </div>
-          </div>
-        )}
-
-        {confirmDialog && (
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden p-6 text-center">
-              <AlertTriangle size={48} className="mx-auto text-amber-500 mb-4" />
-              <h3 className="text-lg font-bold text-slate-800 mb-2">{confirmDialog.title}</h3>
-              <p className="text-sm text-slate-600 mb-6">{confirmDialog.message}</p>
-              <div className="flex justify-center gap-3">
-                <button onClick={() => setConfirmDialog(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">Batal</button>
-                <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-colors">Ya, Hapus</button>
               </div>
             </div>
-          </div>
-        )}
+            <nav className="flex-1 py-4 px-3 space-y-1">
+              {navItems.map(item => (<button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${activeTab === item.id ? 'bg-blue-600 text-white shadow-sm' : 'hover:bg-slate-800'}`}><item.icon size={18} /><span className="font-bold text-xs">{item.label}</span></button>))}
+            </nav>
+            <div className="p-4"><button onClick={handleLogout} className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 transition-colors text-red-400 rounded-lg flex justify-center text-xs font-bold"><LogOut size={16} className="mr-2"/> Logout</button></div>
+          </aside>
 
-      </main>
-    </div>
-  );
-}
+          <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+            <header className="bg-white px-5 py-3 border-b flex justify-between items-center">
+              <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 hover:bg-slate-100 bg-slate-50 border rounded-lg"><Menu size={18}/></button>
+              <div className="flex items-center gap-4">
+                <span className="hidden sm:inline-block font-bold text-[11px] bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full shadow-sm">{userProfile?.name} ({userRole === 'admin' ? 'Admin' : (userRole === 'pimpinan' ? 'Pimpinan' : userProfile?.agency)})</span>
+                
+                <div className="relative">
+                  <button onClick={() => setShowNotifPanel(!showNotifPanel)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 relative transition-colors">
+                    <Bell size={18}/>
+                    {notifications.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>}
+                  </button>
+                  
+                  {showNotifPanel && (
+                    <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 shadow-2xl rounded-2xl z-50 overflow-hidden">
+                       <div className="p-4 bg-slate-50 border-b flex justify-between items-center">
+                         <span className="font-bold text-slate-800 text-sm">Notifikasi Isu Baru</span>
+                         <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{notifications.length} Baru</span>
+                       </div>
+                       <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                         {notifications.length > 0 ? notifications.map(n => (
+                           <div key={n.id} onClick={() => { setViewingIssue(n); setShowNotifPanel(false); }} className="p-4 border-b hover:bg-slate-50 cursor-pointer transition-colors">
+                             <p className="text-[10px] font-bold text-blue-600 mb-1 line-clamp-1">{(n.leadingSectors || [n.leadingSector]).filter(Boolean).join(', ')}</p>
+                             <p className="text-xs font-semibold text-slate-800 line-clamp-2">{n.title}</p>
+                             <div className="flex justify-between items-center mt-2">
+                               <span className="text-[9px] text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">{n.sourceType}</span>
+                               <span className="text-[9px] text-slate-400">{n.date}</span>
+                             </div>
+                           </div>
+                         )) : <p className="p-6 text-xs text-center text-slate-500">Belum ada isu baru untuk OPD Anda.</p>}
+                       </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </header>
+            <div className="flex-1 overflow-y-auto p-5 scroll-smooth"><div className="max-w-7xl mx-auto">
+              {activeTab === 'dashboard' && <DashboardView issues={issues} setActiveTab={setActiveTab} potensiIsuList={potensiIsuList} role={userRole} onSavePotensiIsu={savePotensiIsu} showToast={showToast} />}
+              {activeTab === 'fetch_news' && userRole === 'admin' && <FetchNewsView onFetchNews={handleFetchNews} isFetchingNews={isFetchingNews} fetchedNewsList={fetchedNewsList} onApprove={handleApproveNews} onDiscard={handleDiscardNews} />}
+              {activeTab === 'social' && <DataTableView title="Media Sosial" type="Media Sosial" issues={issues.filter(i=>i.sourceType==='Media Sosial')} onAdd={()=>setIsIssueModalOpen('Media Sosial')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Sosial');}} onDelete={triggerDeleteIssue} role={userRole} onView={setViewingIssue} />}
+              {activeTab === 'online' && <DataTableView title="Media Online" type="Media Online" issues={issues.filter(i=>i.sourceType==='Media Online')} onAdd={()=>setIsIssueModalOpen('Media Online')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Online');}} onDelete={triggerDeleteIssue} role={userRole} onView={setViewingIssue} />}
+              {activeTab === 'print' && <DataTableView title="Media Cetak" type="Media Cetak" issues={issues.filter(i=>i.sourceType==='Media Cetak')} onAdd={()=>setIsIssueModalOpen('Media Cetak')} onEdit={(i)=>{setEditingIssue(i); setIsIssueModalOpen('Media Cetak');}} onDelete={triggerDeleteIssue} role={userRole} onView={setViewingIssue} />}
+              {activeTab === 'analysis' && <AnalysisView issues={issues} role={userRole} agency={userProfile?.agency} onAnalyze={handleAnalyzeAI} analyzingId={analyzingId} onView={setViewingIssue} onPublishToggle={togglePublishAnalysis} onEditAnalysis={setEditingAnalysisIssue} onDelete={triggerDeleteIssue} onDownloadAll={handleDownloadAllWord} onDownloadRecap={handleDownloadRecapWord} />}
+            </div></div>
+            
+            {isIssueModalOpen && <IssueModal type={isIssueModalOpen} onClose={() => {setIsIssueModalOpen(false); setEditingIssue(null);}} onSave={saveIssue} initialData={editingIssue} isUploading={isUploading} showToast={showToast}/>}
+            {handlingIssue && <HandlingModal issue={handlingIssue} onClose={() => {setHandlingIssue(null); setViewingIssue(handlingIssue);}} onSave={saveHandlingUpdate} isUploading={isUploading} role={userRole} userAgency={userProfile?.agency} showToast={showToast}/>}
+            {editingAnalysisIssue && <AnalysisEditModal issue={editingAnalysisIssue} onClose={() => setEditingAnalysisIssue(null)} onSave={saveAnalysisEdit} isUploading={isUploading}/>}
 
-const rootElement = document.getElementById('root');
-const root = createRoot(rootElement);
-root.render(<App />);
+            {viewingIssue && (
+              <div className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+                 <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl p-6 overflow-y-auto max-h-[90vh] relative">
+                    <button onClick={()=>setViewingIssue(null)} className="absolute top-4 right-4 p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X size={20}/></button>
+                    <h2 className="text-2xl font-bold mb-6 pr-10 text-slate-800">{viewingIssue.title}</h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                       
+                       {/* KOLOM KIRI: Informasi & Konten */}
+                       <div className="space-y-4">
+                          <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-sm">
+                            <h4 className="font-bold text-blue-800 mb-4 flex items-center text-sm"><Share2 size={16} className="mr-2"/> Informasi Sumber & Sektor</h4>
+                            <div className="space-y-3 text-sm text-slate-700">
+                               <p><strong>Jenis Media:</strong> {viewingIssue.sourceType}</p>
+                               
+                               {viewingIssue.sourceType === 'Media Cetak' && viewingIssue.mediaName && (
+                                  <p><strong>Nama Media:</strong> {viewingIssue.mediaName}</p>
+                               )}
+
+                               {viewingIssue.sourceType === 'Media Sosial' && (
+                                  <>
+                                     {(viewingIssue.platforms && viewingIssue.platforms.filter(Boolean).length > 0) ? (
+                                        <p><strong>Platform:</strong> {viewingIssue.platforms.filter(Boolean).join(', ')}</p>
+                                     ) : (viewingIssue.platform && (
+                                        <p><strong>Platform:</strong> {viewingIssue.platform}</p>
+                                     ))}
+                                     
+                                     {(viewingIssue.accounts && viewingIssue.accounts.filter(Boolean).length > 0) ? (
+                                        <p><strong>Nama Akun:</strong> {viewingIssue.accounts.filter(Boolean).join(', ')}</p>
+                                     ) : (viewingIssue.account && (
+                                        <p><strong>Nama Akun:</strong> {viewingIssue.account}</p>
+                                     ))}
+                                  </>
+                               )}
+
+                               {viewingIssue.sourceType === 'Media Online' && (
+                                  <>
+                                     {(viewingIssue.domains && viewingIssue.domains.filter(Boolean).length > 0) ? (
+                                        <p><strong>Domain Berita:</strong> {viewingIssue.domains.filter(Boolean).join(', ')}</p>
+                                     ) : (viewingIssue.domain && (
+                                        <p><strong>Domain Berita:</strong> {viewingIssue.domain}</p>
+                                     ))}
+                                  </>
+                               )}
+
+                               {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).length > 0 && viewingIssue.sourceType !== 'Media Cetak' && (
+                                  <div>
+                                      <strong>Tautan/Link:</strong>
+                                      <ul className="list-disc pl-5 mt-1 text-xs space-y-1">
+                                          {(viewingIssue.links || [viewingIssue.link]).filter(Boolean).map((l, i) => (
+                                              <li key={i}><a href={l} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline break-all">{l}</a></li>
+                                          ))}
+                                      </ul>
+                                  </div>
+                               )}
+                               
+                               <div>
+                                   <strong>Leading Sector:</strong>
+                                   <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                      {(viewingIssue.leadingSectors || [viewingIssue.leadingSector]).filter(Boolean).map((s, i) => (
+                                          <span key={i} className="text-xs bg-white border border-blue-200 text-blue-700 px-2 py-1 rounded font-bold shadow-sm">{s}</span>
+                                      ))}
+                                   </div>
+                               </div>
+                               {viewingIssue.attachmentUrl && (
+                                  <div className="mt-2 pt-3 border-t border-blue-200">
+                                      <a href={viewingIssue.attachmentUrl} target="_blank" rel="noreferrer" className="inline-flex bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-bold text-xs shadow-sm"><ImageIcon size={14} className="mr-1.5"/> Lihat Lampiran Isu</a>
+                                  </div>
+                               )}
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
+                            <p className="text-sm font-bold text-slate-500 mb-2">Isi/Konten</p>
+                            <p className="text-sm text-slate-800 whitespace-pre-wrap">{viewingIssue.content || viewingIssue.caption || '-'}</p>
+                          </div>
+                          
+                          {/* Daftar Komentar Netizen untuk Medsos */}
+                          {viewingIssue.sourceType === 'Media Sosial' && viewingIssue.comments && viewingIssue.comments.length > 0 && (
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                              <p className="text-sm font-bold text-slate-500 mb-3">Komentar Netizen</p>
+                              <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                                {viewingIssue.comments.map((c, i) => (
+                                  <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
+                                    <div className="flex justify-between items-center mb-1.5">
+                                      <span className="text-xs font-bold text-blue-600">@{c.account || 'anonim'}</span>
+                                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${c.sentiment === 'Positif' ? 'bg-emerald-100 text-emerald-700' : c.sentiment === 'Negatif' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{c.sentiment}</span>
+                                    </div>
+                                    <p className="text-sm text-slate-700">{c.content}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="bg-slate-50 p-5 rounded-xl border border-slate-100">
+                            <div className="flex justify-between items-center mb-4">
+                               <p className="font-bold text-slate-800 text-sm">Riwayat Penanganan</p>
+                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${viewingIssue.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : viewingIssue.status === 'Dalam Proses' ? 'bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-700'}`}>{viewingIssue.status || 'Belum Ditangani'}</span>
+                            </div>
+                            
+                            <div className="space-y-4 max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                               {viewingIssue.handlingList && viewingIssue.handlingList.length > 0 ? (
+                                  viewingIssue.handlingList.map((h, i) => (
+                                     <div key={i} className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm relative group">
+                                        {userRole === 'admin' && (
+                                            <button 
+                                                onClick={() => handleDeleteHandlingRecord(viewingIssue.id, i)}
+                                                className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                                title="Hapus Progress Ini"
+                                            >
+                                                <Trash2 size={14}/>
+                                            </button>
+                                        )}
+                                        <div className="flex justify-between items-start mb-1 pr-8">
+                                           <span className="text-[11px] font-bold text-blue-600">{h.agency}</span>
+                                           <span className="text-[10px] text-slate-400">{h.handlingDate}</span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500 mb-2">Status: <strong className="text-slate-700">{h.status}</strong> (by: {h.updatedBy})</p>
+                                        <p className="text-xs text-slate-700 whitespace-pre-wrap">{h.handlingNotes}</p>
+                                        {h.handlingAttachmentUrl && (
+                                          <a href={h.handlingAttachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-2 bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[10px] font-bold hover:bg-emerald-100"><ImageIcon size={12} className="mr-1"/> Lihat Bukti</a>
+                                        )}
+                                     </div>
+                                  ))
+                               ) : (
+                                  // Tampilan Lama / Jika belum pakai sistem Array
+                                  viewingIssue.handlingNotes ? (
+                                    <div className="p-3 bg-white border border-slate-200 rounded-lg shadow-sm relative group">
+                                        <div className="flex justify-between items-start mb-1 pr-8">
+                                           <span className="text-[11px] font-bold text-blue-600">Catatan Penanganan (Lama)</span>
+                                           <span className="text-[10px] text-slate-400">{viewingIssue.handlingDate}</span>
+                                        </div>
+                                        <p className="text-xs text-slate-700 whitespace-pre-wrap">{viewingIssue.handlingNotes}</p>
+                                        {viewingIssue.handlingAttachmentUrl && (
+                                          <a href={viewingIssue.handlingAttachmentUrl} target="_blank" rel="noreferrer" className="inline-flex mt-2 bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-[10px] font-bold hover:bg-emerald-100"><ImageIcon size={12} className="mr-1"/> Lihat Bukti</a>
+                                        )}
+                                    </div>
+                                  ) : (
+                                     <p className="text-xs text-slate-400 text-center py-2">Belum ada riwayat progres penanganan instansi.</p>
+                                  )
+                               )}
+                            </div>
+
+                            {(userRole === 'admin' || (viewingIssue.leadingSectors || []).includes(userProfile?.agency)) && (
+                              <button onClick={() => {setHandlingIssue(viewingIssue); setViewingIssue(null);}} className="w-full mt-4 bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm flex items-center justify-center shadow-md hover:bg-emerald-700 transition-colors"><Plus size={16} className="mr-2"/> Tambah Progress Penanganan</button>
+                            )}
+                          </div>
+                       </div>
+                       
+                       {/* KOLOM KANAN: Analisis AI */}
+                       <div>
+                         {viewingIssue.aiAnalysis && (userRole === 'admin' || userRole === 'pimpinan' || (viewingIssue.leadingSectors || [viewingIssue.leadingSector]).includes(userProfile?.agency)) ? (
+                            <div className="bg-amber-50 p-6 rounded-xl border border-amber-200 h-full flex flex-col shadow-sm">
+                              <div className="flex flex-wrap justify-between items-start mb-5 border-b border-amber-200 pb-4 gap-2">
+                                 <h4 className="font-bold text-amber-900 flex items-center text-lg"><Brain className="mr-2 text-amber-600"/> Hasil Analisis & Rekomendasi</h4>
+                                 <div className="flex gap-2">
+                                     <button onClick={() => handleDownloadWord(viewingIssue)} className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">DOCX</button>
+                                     <button onClick={() => handleDownloadPDF(viewingIssue)} className="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded font-bold transition-colors shadow-sm">PDF</button>
+                                     <button onClick={() => handleSendWA(viewingIssue)} className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded font-bold transition-colors shadow-sm flex items-center" title="Kirim Laporan via WhatsApp"><MessageCircle size={14}/></button>
+                                 </div>
+                              </div>
+                              
+                              <div className="flex-1 overflow-y-auto pr-2 space-y-5">
+                                <div>
+                                   <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Analisis:</p>
+                                   <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.analysis || "Belum ada teks analisis."}</p>
+                                </div>
+                                <div>
+                                   <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Rekomendasi Kebijakan:</p>
+                                   <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.policyRecommendation || "-"}</p>
+                                </div>
+                                <div>
+                                   <p className="text-xs text-amber-800/70 uppercase tracking-wider font-bold mb-1.5">Rekomendasi Publikasi:</p>
+                                   <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{viewingIssue.aiAnalysis.publicationRecommendation || "-"}</p>
+                                </div>
+                              </div>
+                            </div>
+                         ) : (
+                           <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-slate-500 h-full flex flex-col items-center justify-center">
+                             <Lock size={32} className="mb-3 text-slate-300"/>
+                             {userRole === 'admin' ? "Pilih tombol analisis untuk memproses isu ini." : "Isu ini belum dianalisis atau bukan kewenangan Anda."}
+                           </div>
+                         )}
+                       </div>
+                    </div>
+                 </div>
+              </div>
+            )}
+
+            {confirmDialog && (
+              <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden p-6 text-center">
+                  <AlertTriangle size={48} className="mx-auto text-amber-500 mb-4" />
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">{confirmDialog.title}</h3>
+                  <p className="text-sm text-slate-600 mb-6">{confirmDialog.message}</p>
+                  <div className="flex justify-center gap-3">
+                    <button onClick={() => setConfirmDialog(null)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">Batal</button>
+                    <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-colors">Ya, Hapus</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </main>
+        </div>
+      );
+    }
+
+    const rootElement = document.getElementById('root');
+    const root = createRoot(rootElement);
+    root.render(<App />);
   </script>
 </body>
 </html>
